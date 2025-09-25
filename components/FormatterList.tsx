@@ -8,7 +8,7 @@ import { Plus, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
-const API_BASE_URL = "http://13.200.213.47:4000"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
 interface Formatter {
     api_id: string

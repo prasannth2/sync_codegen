@@ -94,8 +94,8 @@ function toFormatterKey(formatterName: string): string {
 }
 
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
-const API_BASE_URL = "http://13.200.213.47:4000"
 
 
 export function MapperSchemaGenerator() {
@@ -543,11 +543,11 @@ export function MapperSchemaGenerator() {
   useEffect(() => {
     const fetchAPIs = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/apis?search=dealer&limit=10`)
+        const response = await fetch(`${API_BASE_URL}/api/apis`)
         if (!response.ok) throw new Error(`API error: ${response.status}`)
         const data = await response.json()
 
-        setAvailableAPIs(data?.apis)
+        setAvailableAPIs(data?.data)
       } catch (error) {
         console.error("Failed to fetch APIs:", error)
         toast({
