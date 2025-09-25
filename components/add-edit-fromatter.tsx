@@ -841,229 +841,44 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
       </div>
 
       {showMainInterface && (
-        <div className="w-full flex h-full">
-          {/* Column 1 */}
-          <div className="flex-1 border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {sampleResponseValid === null ? (
-                    <div className="w-5 h-5 bg-muted" />
-                  ) : sampleResponseValid ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  )}
-                  <h2 className="text-lg font-semibold">Sample Response</h2>
-                </div>
+        <section className="flex-1 min-h-0">
+          {/* Unified column headers (one straight bottom line) */}
+          <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+            {/* H1 */}
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-2">
+                {sampleResponseValid === null ? (
+                  <div className="w-5 h-5 bg-muted" />
+                ) : sampleResponseValid ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-500" />
+                )}
+                <h2 className="text-lg font-semibold">Sample Response</h2>
               </div>
             </div>
 
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-              <div className="space-y-2">
-                <Label htmlFor="sample-response" className="text-base font-semibold">
-                  JSON Response *
-                </Label>
-                <Textarea
-                  id="sample-response"
-                  placeholder={
-                    selectedAPIData ? "Sample response loaded from API" : "Select an API first or paste JSON response"
-                  }
-                  value={sampleResponse}
-                  onChange={(e) => setSampleResponse(e.target.value)}
-                  onBlur={handleSampleResponseBlur}
-                  className={`font-mono text-sm min-h-[300px] resize-none ${sampleResponseValid === false
-                    ? "border-red-500 focus:border-red-500"
-                    : sampleResponseValid === true
-                      ? "border-green-500"
-                      : ""
-                    }`}
-                />
-                <div className="flex items-center justify-between text-sm">
-                  <p className="text-muted-foreground">
-                    {selectedAPIData
-                      ? `Sample from ${selectedAPIData.name}`
-                      : "Paste your API response to analyze structure"}
-                  </p>
-                  {sampleResponseValid === false && <span className="text-red-500 font-medium">Invalid JSON</span>}
-                  {sampleResponseValid === true && <span className="text-green-500 font-medium">Valid JSON</span>}
-                </div>
+            {/* H2 */}
+            <div className="px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-semibold">Transform Instructions</h2>
               </div>
-
-              <Collapsible open={showPreferences} onOpenChange={setShowPreferences}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="p-0 h-auto font-normal text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    <ChevronDown
-                      className={`w-4 h-4 mr-2 transition-transform ${showPreferences ? "rotate-180" : ""}`}
-                    />
-                    Schema Preferences
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 mt-4 p-4 bg-muted/30">
-                  <div className="space-y-2">
-                    <Label htmlFor="naming-style">Naming Style</Label>
-                    <Select value={namingStyle} onValueChange={setNamingStyle}>
-                      <SelectTrigger id="naming-style">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="snake_case">snake_case</SelectItem>
-                        <SelectItem value="camelCase">camelCase</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="required-fields">Required Fields (comma-separated)</Label>
-                    <Input
-                      id="required-fields"
-                      placeholder="field1, field2, field3"
-                      value={requiredFields}
-                      onChange={(e) => setRequiredFields(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="disallow-additional"
-                      checked={disallowAdditional}
-                      onCheckedChange={(checked) => setDisallowAdditional(checked === true)}
-                    />
-                    <Label htmlFor="disallow-additional" className="text-sm">
-                      Disallow additional properties
-                    </Label>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          </div>
-
-          {/* Column 2 */}
-          <div className="flex-1 border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Transform Instructions</h2>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <Button
-                    onClick={handleGenerateFunction}
-                    disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
-                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    size="sm"
-                  >
-                    <Code className="w-4 h-4 mr-2" />
-                    {isGeneratingFunction ? "Generating..." : "Generate Function"}
-                  </Button>
-
-                  {/* NEW: Artifact quick actions (three icons) */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="View Schema Artifact"
-                      onClick={() => openArtifact(artifactIds?.schema, "schema.json")}
-                      disabled={!artifactIds?.schema}
-                    >
-                      <FileJson className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="View Mapper Code"
-                      onClick={() => openArtifact(artifactIds?.mapper_code, "mapper_code.ts")}
-                      disabled={!artifactIds?.mapper_code}
-                    >
-                      <FileCode2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="View Mongoose Model"
-                      onClick={() => openArtifact(artifactIds?.mongoose_model, "mongoose_model.ts")}
-                      disabled={!artifactIds?.mongoose_model}
-                    >
-                      <FileType className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleGenerateFunction}
+                  disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                  size="sm"
+                >
+                  <Code className="w-4 h-4 mr-2" />
+                  {isGeneratingFunction ? "Generating..." : "Generate Function"}
+                </Button>
               </div>
             </div>
 
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto relative">
-              <div className="space-y-2">
-                <Label htmlFor="mapping-instructions" className="text-base font-semibold">
-                  Step-by-step Instructions *
-                </Label>
-                <div className="relative">
-                  <textarea
-                    ref={instructionsRef}
-                    value={mappingInstructions}
-                    onChange={handleInstructionsChange}
-                    onBlur={handleInstructionsBlur}
-                    className="min-h=[300px] min-h-[300px] resize-none font-mono text-sm w-full border border-input rounded px-3 py-2"
-                    placeholder={`1) remove fields: sales_meta_data, origin
-2) rename: SalesPrice → salesPrice, MakingCost → makingCost  
-3) cast to number: salesPrice, makingCost
-4) compute profit = @calculateProfit(salesPrice, makingCost)
-5) add timestamp = @currentDate
-6) output ${namingStyle} keys
-
-Type @ to see available functions and variables`}
-                  />
-
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-10 bg-background border border-border shadow-lg max-h-48 overflow-y-auto">
-                      {suggestions.map((suggestion, index) => (
-                        <button
-                          key={index}
-                          className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col"
-                          onClick={() => insertSuggestion(suggestion)}
-                        >
-                          <span className="font-medium">@{suggestion.name}</span>
-                          <span className="text-sm text-muted-foreground">{suggestion.description}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Describe transformations step-by-step. Use @ to reference functions and variables.
-                </p>
-              </div>
-
-              {/* Function / Test status box */}
-              {(generatedFunction || canShowTest) && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Code className="w-5 h-5 text-blue-500" />
-                      <span className="font-medium text-blue-700 dark:text-blue-300">
-                        {canShowTest ? "Artifacts Ready" : "Function Ready"}
-                      </span>
-                    </div>
-                    <Button onClick={handleTestFunction} disabled={!sampleResponse || !canShowTest} size="sm" variant="outline">
-                      <TestTube className="w-4 h-4 mr-2" />
-                      Test Function
-                    </Button>
-                  </div>
-                  {!canShowTest && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Test will be enabled once <code>mapper_code</code> and <code>mongoose_model</code> artifacts are generated.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Column 3 */}
-          <div className="flex-1 border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border flex-shrink-0">
+            {/* H3 */}
+            <div className="px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {mappedOutputValid === null ? (
@@ -1083,58 +898,208 @@ Type @ to see available functions and variables`}
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="p-6 flex-1 overflow-hidden">
-              {isSchemaGenerateLoading ? (
-                <div className="flex items-center justify-center h-full text-center">
-                  <div className="space-y-4">
-                    <div className="animate-spin text-6xl">⏳</div>
-                    <div className="space-y-2">
-                      <p className="text-lg font-medium text-muted-foreground">Generating Schema...</p>
-                      <p className="text-sm text-muted-foreground">
-                        Please wait while we process your response and instructions.
-                      </p>
-                    </div>
+          {/* Body row (scrollable), lines stay aligned with the header */}
+          <div className="grid grid-cols-3 divide-x divide-border min-h-0 h-full">
+            {/* Col 1: Sample Response */}
+            <div className="min-h-0 flex flex-col">
+              <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
+                <div className="space-y-2">
+                  <Label htmlFor="sample-response" className="text-base font-semibold">
+                    JSON Response *
+                  </Label>
+                  <Textarea
+                  id="sample-response"
+                  placeholder={
+                    selectedAPIData
+                      ? "Sample response loaded from API"
+                      : "Select an API first or paste JSON response"
+                  }
+                  value={sampleResponse}
+                  onChange={(e) => setSampleResponse(e.target.value)}
+                  onBlur={handleSampleResponseBlur}
+                  spellCheck={false}
+                  className={`font-mono text-sm resize-none overflow-auto w-full
+              min-h-[300px] max-h-[calc(100vh-320px)]
+              ${sampleResponseValid === false
+                      ? "border-red-500 focus:border-red-500"
+                      : sampleResponseValid === true
+                        ? "border-green-500"
+                        : ""}`}
+                />
+                  <div className="flex items-center justify-between text-sm">
+                    <p className="text-muted-foreground">
+                      {selectedAPIData ? `Sample from ${selectedAPIData.name}` : "Paste your API response to analyze structure"}
+                    </p>
+                    {sampleResponseValid === false && <span className="text-red-500 font-medium">Invalid JSON</span>}
+                    {sampleResponseValid === true && <span className="text-green-500 font-medium">Valid JSON</span>}
                   </div>
                 </div>
-              ) : mappedOutput ? (
-                <div className="h-full">
-                  <div className="space-y-2 h-full">
-                    <Label className="text-base font-semibold">Transformed JSON</Label>
-                    <Textarea
-                      value={mappedOutput}
-                      readOnly
-                      className={`font-mono text-sm h-full resize-none ${mappedOutputValid === false
-                        ? "border-red-500"
-                        : mappedOutputValid === true
-                          ? "border-green-500"
-                          : ""
-                        }`}
+
+                {/* Preferences */}
+                <Collapsible open={showPreferences} onOpenChange={setShowPreferences}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="p-0 h-auto font-normal text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 mr-2 transition-transform ${showPreferences ? "rotate-180" : ""}`}
+                      />
+                      Schema Preferences
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 mt-4 p-4 bg-muted/30 rounded">
+                    <div className="space-y-2">
+                      <Label htmlFor="naming-style">Naming Style</Label>
+                      <Select value={namingStyle} onValueChange={setNamingStyle}>
+                        <SelectTrigger id="naming-style">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="snake_case">snake_case</SelectItem>
+                          <SelectItem value="camelCase">camelCase</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="required-fields">Required Fields (comma-separated)</Label>
+                      <Input
+                        id="required-fields"
+                        placeholder="field1, field2, field3"
+                        value={requiredFields}
+                        onChange={(e) => setRequiredFields(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="disallow-additional"
+                        checked={disallowAdditional}
+                        onCheckedChange={(checked) => setDisallowAdditional(!!checked)}
+                      />
+                      <Label htmlFor="disallow-additional" className="text-sm">
+                        Disallow additional properties
+                      </Label>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            </div>
+
+            {/* Col 2: Instructions */}
+            <div className="min-h-0 flex flex-col">
+              <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto relative">
+                <div className="space-y-2">
+                  <Label htmlFor="mapping-instructions" className="text-base font-semibold">
+                    Step-by-step Instructions *
+                  </Label>
+                  <div className="relative">
+                    <textarea
+                      ref={instructionsRef}
+                      value={mappingInstructions}
+                      onChange={handleInstructionsChange}
+                      onBlur={handleInstructionsBlur}
+                      className="min-h-[300px] resize-none font-mono text-sm w-full border border-input rounded px-3 py-2"
+                      placeholder={`1) remove fields: sales_meta_data, origin
+2) rename: SalesPrice → salesPrice, MakingCost → makingCost  
+3) cast to number: salesPrice, makingCost
+4) compute profit = @calculateProfit(salesPrice, makingCost)
+5) add timestamp = @currentDate
+6) output ${namingStyle} keys
+
+Type @ to see available functions and variables`}
                     />
-                    <div className="flex items-center justify-between text-sm">
-                      <p className="text-muted-foreground">Transformation preview</p>
-                      {mappedOutputValid === false && <span className="text-red-500 font-medium">Invalid JSON</span>}
-                      {mappedOutputValid === true && <span className="text-green-500 font-medium">Valid JSON</span>}
+
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-10 bg-background border border-border shadow-lg max-h-48 overflow-y-auto">
+                        {suggestions.map((suggestion, index) => (
+                          <button
+                            key={index}
+                            className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col"
+                            onClick={() => insertSuggestion(suggestion)}
+                          >
+                            <span className="font-medium">@{suggestion.name}</span>
+                            <span className="text-sm text-muted-foreground">{suggestion.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Describe transformations step-by-step. Use @ to reference functions and variables.
+                  </p>
+                </div>
+
+                {generatedFunction && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Code className="w-5 h-5 text-blue-500" />
+                        <span className="font-medium text-blue-700 dark:text-blue-300">Function Ready</span>
+                      </div>
+                      <Button onClick={handleTestFunction} disabled={!sampleResponse} size="sm" variant="outline">
+                        <TestTube className="w-4 h-4 mr-2" />
+                        Test Function
+                      </Button>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-center">
-                  <div className="space-y-4">
-                    <div className="text-6xl">⚡</div>
-                    <div className="space-y-2">
-                      <p className="text-lg font-medium text-muted-foreground">Preview Output</p>
-                      <p className="text-sm text-muted-foreground">
-                        Add sample response and instructions, then click outside to see transformation
-                      </p>
+                )}
+              </div>
+            </div>
+
+            {/* Col 3: Mapped Output */}
+            <div className="min-h-0 flex flex-col">
+              <div className="p-6 flex-1 min-h-0 overflow-y-auto">
+                {isSchemaGenerateLoading ? (
+                  <div className="flex items-center justify-center h-full text-center">
+                    <div className="space-y-4">
+                      <div className="animate-spin text-6xl">⏳</div>
+                      <div className="space-y-2">
+                        <p className="text-lg font-medium text-muted-foreground">Generating Schema...</p>
+                        <p className="text-sm text-muted-foreground">
+                          Please wait while we process your response and instructions.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                ) : mappedOutput ? (
+                  <div className="h-full">
+                    <div className="space-y-2 h-full flex flex-col">
+                      <Label className="text-base font-semibold">Transformed JSON</Label>
+                      <Textarea
+                        value={mappedOutput}
+                        readOnly
+                        className="font-mono text-sm resize-none overflow-auto w-full flex-1 min-h-0"
+                      />
+                      <div className="flex items-center justify-between text-sm">
+                        <p className="text-muted-foreground">Transformation preview</p>
+                        {mappedOutputValid === false && <span className="text-red-500 font-medium">Invalid JSON</span>}
+                        {mappedOutputValid === true && <span className="text-green-500 font-medium">Valid JSON</span>}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-center">
+                    <div className="space-y-4">
+                      <div className="text-6xl">⚡</div>
+                      <div className="space-y-2">
+                        <p className="text-lg font-medium text-muted-foreground">Preview Output</p>
+                        <p className="text-sm text-muted-foreground">
+                          Add sample response and instructions, then click outside to see transformation
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
+
 
       {/* Change API warning */}
       <AlertDialog open={showAPIChangeWarning} onOpenChange={setShowAPIChangeWarning}>
