@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
+import { SWRConfigProvider } from './swr-config'
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -19,10 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <div id="root">
-          {children}
-          <Toaster richColors />
-        </div>
+        <SWRConfigProvider>
+          <div id="root">
+            {children}
+            <Toaster richColors />
+          </div>
+        </SWRConfigProvider>
       </body>
     </html>
   )

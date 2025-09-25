@@ -135,8 +135,10 @@ export function FormatterList() {
                                             size="sm"
                                             variant="outline"
                                             onClick={(e) => {
-                                                e.stopPropagation()
-                                                router.push(`/mapper?formatter_id=${fmt.formatter_id}&api_id=${fmt.api_id}`)
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                // router.push(`/mapper?formatter_id=${fmt.formatter_id}&api_id=${fmt.api_id}`)
+                                                router.push(`/formatters/${fmt.formatter_id}`)
                                             }}
                                         >
                                             Open
