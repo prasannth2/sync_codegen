@@ -51,7 +51,7 @@ interface GeneratedFunction {
 }
 
 interface APIEndpoint {
-  api_id: string
+  id: string
   name: string
   method: string
   url: string
@@ -102,7 +102,7 @@ export function MapperSchemaGenerator() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const formatterId = searchParams.get("formatter_id");
-  const api_id = searchParams.get("api_id");
+  const id = searchParams.get("id");
   const [transformName, setTransformName] = useState("")
   const [transformDescription, setTransformDescription] = useState("")
   const [selectedAPI, setSelectedAPI] = useState<string>("")
@@ -166,7 +166,7 @@ export function MapperSchemaGenerator() {
 
   const applyAPIChange = (apiId: string) => {
     console.log(apiId)
-    const apiData = availableAPIs.find((api) => api.api_id === apiId)
+    const apiData = availableAPIs.find((api) => api.id === apiId)
     console.log(apiData?.sample_response)
     console.log(typeof apiData?.sample_response)
 
@@ -331,7 +331,7 @@ export function MapperSchemaGenerator() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            api_id: selectedAPIData?.api_id || transformName, // use selected API id or fallback
+            id: selectedAPIData?.id || transformName, // use selected API id or fallback
             formatter_id: formatterId || undefined,
             formatter_name: transformName,
             formatter_key: formatter_key,
@@ -405,7 +405,7 @@ export function MapperSchemaGenerator() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          api_id: selectedAPIData?.api_id || "", // your backend expects api_id
+          id: selectedAPIData?.id || "", // your backend expects id
           formatter_id: schemaGenerateResponse?.formatter_id,
           model_name: transformName,
           sample_response: JSON.parse(mappedOutput),
@@ -475,7 +475,7 @@ export function MapperSchemaGenerator() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          api_id: selectedAPIData?.api_id || "", // must be the real ObjectId
+          id: selectedAPIData?.id || "", // must be the real ObjectId
           sample_request: JSON.parse(testInput),
           formatter_id: schemaGenerateResponse?.formatter_id,
           options: {
@@ -573,7 +573,7 @@ export function MapperSchemaGenerator() {
         if (!res.ok) throw new Error(`Formatter API error: ${res.status}`);
         const data = await res.json();
 
-        const formatter = data?.formatters?.find((f: any) => f.api_id === api_id);
+        const formatter = data?.formatters?.find((f: any) => f.id === id);
         if (formatter) {
           console.log('formatter', formatter)
           // Prefill transform details
@@ -581,9 +581,9 @@ export function MapperSchemaGenerator() {
           setTransformDescription(formatter.description || "");
 
           // Match API
-          const apiMatch = availableAPIs.find((api) => api.api_id === formatter.api_id);
+          const apiMatch = availableAPIs.find((api) => api.id === formatter.id);
           if (apiMatch) {
-            applyAPIChange(apiMatch.api_id);
+            applyAPIChange(apiMatch.id);
 
             // ✅ Skip config screen automatically
             setShowConfiguration(false);
@@ -664,10 +664,10 @@ export function MapperSchemaGenerator() {
                     </SelectTrigger>
                     <SelectContent>
                       {availableAPIs.map((api) => (
-                        <SelectItem key={api.api_id} value={api.api_id}>
+                        <SelectItem key={api.id} value={api.id}>
                           <div className="flex flex-col">
                             <span className="font-medium">{api.name}</span>
-                            <span className="font-medium">{api.api_id}</span>
+                            <span className="font-medium">{api.id}</span>
                             {/* <span className="text-sm text-muted-foreground">{api.}</span> */}
                           </div>
                         </SelectItem>
