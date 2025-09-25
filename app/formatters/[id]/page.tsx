@@ -12,6 +12,18 @@ export default function ApisPage({
 }) {
   const { id } = params;
 
+  if (id === "new") {
+    return (
+      <main className="min-h-screen bg-background py-8 px-4">
+        <div className="mx-auto">
+          <Suspense fallback={<div>Loading Formatter...</div>}>
+            <AddEditFormatter />
+          </Suspense>
+        </div>
+      </main>
+    );
+  }
+
   const { formatter, isLoading } = useFormatter(id);
 
   if (!isLoading && !formatter) {
@@ -25,7 +37,7 @@ export default function ApisPage({
   return (
     <main className="min-h-screen bg-background py-8 px-4">
       <div className="mx-auto">
-        <Suspense fallback={<div>Loading Mapper...</div>}>
+        <Suspense fallback={<div>Loading Formatter...</div>}>
           <AddEditFormatter initialFormatter={formatter?.data} />
         </Suspense>
       </div>

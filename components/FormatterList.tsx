@@ -73,7 +73,7 @@ export function FormatterList() {
                     <h1 className="text-2xl font-semibold tracking-tight">Formatters</h1>
                     <p className="text-muted-foreground">Manage your data formatters and transformations</p>
                 </div>
-                <Button onClick={() => router.push("/mapper")} className="flex items-center gap-2">
+                <Button onClick={() => router.push("/formatters/new")} className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
                     New Formatter
                 </Button>
