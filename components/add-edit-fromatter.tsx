@@ -107,6 +107,8 @@ type ArtifactsIds = {
 
 export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
   const router = useRouter()
+  const previewCtrlRef = useRef<AbortController | null>(null);
+  useEffect(() => () => previewCtrlRef.current?.abort(), []);
   const [transformName, setTransformName] = useState("")
   const [transformDescription, setTransformDescription] = useState("")
   const [selectedAPI, setSelectedAPI] = useState<string>("")
@@ -915,9 +917,9 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
       {showMainInterface && (
         <section className="flex-1 min-h-0">
-          {/* Unified column headers (one straight bottom line) */}
+          {/* Unified headers */}
           <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
-            {/* H1 */}
+            {/* H1: Sample Response */}
             <div className="px-6 py-5">
               <div className="flex items-center gap-2">
                 {sampleResponseValid === null ? (
@@ -931,26 +933,80 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
               </div>
             </div>
 
-            {/* H2 */}
-            <div className="px-6 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-semibold">Transform Instructions</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleGenerateFunction}
-                  disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                  size="sm"
-                >
-                  <Code className="w-4 h-4 mr-2" />
-                  {isGeneratingFunction ? "Generating..." : "Generate Function"}
-                </Button>
+            {/* H2: Transform Instructions (single row, aligned) */}
+            <div className="px-6 py-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Settings className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Transform Instructions</h2>
+                </div>
+
+                {/* Actions inline to keep header height equal */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={previewMappedOutput}
+                    variant="secondary"
+                    size="sm"
+                    className="cursor-pointer"
+                    disabled={isSchemaGenerateLoading || !sampleResponseValid || !mappingInstructions.trim()}
+                  >
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                    {isSchemaGenerateLoading ? "Previewing..." : "Preview Output"}
+                  </Button>
+
+                  {isSchemaGenerateLoading && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => previewCtrlRef.current?.abort()}
+                    >
+                      Cancel Preview
+                    </Button>
+                  )}
+
+                  <Button
+                    onClick={handleGenerateFunction}
+                    disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    size="sm"
+                  >
+                    <Code className="w-4 h-4 mr-2" />
+                    {isGeneratingFunction ? "Generating..." : "Generate Function"}
+                  </Button>
+
+                  {/* Artifact icons */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="View Schema Artifact"
+                    onClick={() => openArtifact(artifactIds?.schema, "schema.json")}
+                    disabled={!artifactIds?.schema}
+                  >
+                    <FileJson className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="View Mapper Code"
+                    onClick={() => openArtifact(artifactIds?.mapper_code, "mapper_code.ts")}
+                    disabled={!artifactIds?.mapper_code}
+                  >
+                    <FileCode2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="View Mongoose Model"
+                    onClick={() => openArtifact(artifactIds?.mongoose_model, "mongoose_model.ts")}
+                    disabled={!artifactIds?.mongoose_model}
+                  >
+                    <FileType className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
-            {/* H3 */}
+            {/* H3: Mapped Output */}
             <div className="px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -973,7 +1029,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
             </div>
           </div>
 
-          {/* Body row (scrollable), lines stay aligned with the header */}
+          {/* Body row */}
           <div className="grid grid-cols-3 divide-x divide-border min-h-0 h-full">
             {/* Col 1: Sample Response */}
             <div className="min-h-0 flex flex-col">
@@ -983,24 +1039,24 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                     JSON Response *
                   </Label>
                   <Textarea
-                  id="sample-response"
-                  placeholder={
-                    selectedAPIData
-                      ? "Sample response loaded from API"
-                      : "Select an API first or paste JSON response"
-                  }
-                  value={sampleResponse}
-                  onChange={(e) => setSampleResponse(e.target.value)}
-                  onBlur={handleSampleResponseBlur}
-                  spellCheck={false}
-                  className={`font-mono text-sm resize-none overflow-auto w-full
-              min-h-[300px] max-h-[calc(100vh-320px)]
-              ${sampleResponseValid === false
-                      ? "border-red-500 focus:border-red-500"
-                      : sampleResponseValid === true
-                        ? "border-green-500"
-                        : ""}`}
-                />
+                    id="sample-response"
+                    placeholder={
+                      selectedAPIData
+                        ? "Sample response loaded from API"
+                        : "Select an API first or paste JSON response"
+                    }
+                    value={sampleResponse}
+                    onChange={(e) => setSampleResponse(e.target.value)}
+                    onBlur={handleSampleResponseBlur}
+                    spellCheck={false}
+                    className={`font-mono text-sm resize-none overflow-auto w-full
+                min-h-[300px] max-h-[calc(100vh-320px)]
+                ${sampleResponseValid === false
+                        ? "border-red-500 focus:border-red-500"
+                        : sampleResponseValid === true
+                          ? "border-green-500"
+                          : ""}`}
+                  />
                   <div className="flex items-center justify-between text-sm">
                     <p className="text-muted-foreground">
                       {selectedAPIData ? `Sample from ${selectedAPIData.name}` : "Paste your API response to analyze structure"}
@@ -1062,84 +1118,20 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
               </div>
             </div>
 
-          {/* Column 2 */}
-          <div className="flex-1 border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Transform Instructions</h2>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={previewMappedOutput}
-                      variant="secondary"
-                      size="sm"
-                      className="cursor-pointer"
-                      disabled={isSchemaGenerateLoading || !sampleResponseValid || !mappingInstructions.trim()}
-                    >
-                      <PlayCircle className="w-4 h-4 mr-2" />
-                      {isSchemaGenerateLoading ? "Previewing..." : "Preview Output"}
-                    </Button>
-
-                    <Button
-                      onClick={handleGenerateFunction}
-                      disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                      size="sm"
-                    >
-                      <Code className="w-4 h-4 mr-2" />
-                      {isGeneratingFunction ? "Generating..." : "Generate Function"}
-                    </Button>
-                  </div>
-
-                  {/* NEW: Artifact quick actions (three icons) */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="View Schema Artifact"
-                      onClick={() => openArtifact(artifactIds?.schema, "schema.json")}
-                      disabled={!artifactIds?.schema}
-                    >
-                      <FileJson className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="View Mapper Code"
-                      onClick={() => openArtifact(artifactIds?.mapper_code, "mapper_code.ts")}
-                      disabled={!artifactIds?.mapper_code}
-                    >
-                      <FileCode2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="View Mongoose Model"
-                      onClick={() => openArtifact(artifactIds?.mongoose_model, "mongoose_model.ts")}
-                      disabled={!artifactIds?.mongoose_model}
-                    >
-                      <FileType className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto relative">
-              <div className="space-y-2">
-                <Label htmlFor="mapping-instructions" className="text-base font-semibold">
-                  Step-by-step Instructions *
-                </Label>
-                <div className="relative">
-                  <textarea
-                    ref={instructionsRef}
-                    value={mappingInstructions}
-                    onChange={handleInstructionsChange}
-                    className="min-h=[300px] min-h-[300px] resize-none font-mono text-sm w-full border border-input rounded px-3 py-2"
-                    placeholder={`1) remove fields: sales_meta_data, origin
+            {/* Col 2: Transform Instructions (no extra border!) */}
+            <div className="min-h-0 flex flex-col">
+              <div className="p-6 space-y-4 flex-1 overflow-y-auto relative">
+                <div className="space-y-2">
+                  <Label htmlFor="mapping-instructions" className="text-base font-semibold">
+                    Step-by-step Instructions *
+                  </Label>
+                  <div className="relative">
+                    <textarea
+                      ref={instructionsRef}
+                      value={mappingInstructions}
+                      onChange={handleInstructionsChange}
+                      className="min-h-[300px] resize-none font-mono text-sm w-full border border-input rounded px-3 py-2"
+                      placeholder={`1) remove fields: sales_meta_data, origin
 2) rename: SalesPrice → salesPrice, MakingCost → makingCost  
 3) cast to number: salesPrice, makingCost
 4) compute profit = @calculateProfit(salesPrice, makingCost)
@@ -1224,7 +1216,7 @@ Type @ to see available functions and variables`}
                       <div className="space-y-2">
                         <p className="text-lg font-medium text-muted-foreground">Preview Output</p>
                         <p className="text-sm text-muted-foreground">
-                          Add sample response and instructions, then click outside to see transformation
+                          Add sample response and instructions, then click Preview to see transformation
                         </p>
                       </div>
                     </div>
@@ -1235,6 +1227,7 @@ Type @ to see available functions and variables`}
           </div>
         </section>
       )}
+
 
 
       {/* Change API warning */}
