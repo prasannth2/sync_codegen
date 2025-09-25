@@ -109,20 +109,15 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
   const router = useRouter()
   const previewCtrlRef = useRef<AbortController | null>(null);
   useEffect(() => () => previewCtrlRef.current?.abort(), []);
+
   const [transformName, setTransformName] = useState("")
-  const [transformDescription, setTransformDescription] = useState("")
+  // description removed from UI; keep state for API compatibility but unused
+  const [transformDescription] = useState("")
+
   const [selectedAPI, setSelectedAPI] = useState<string>("")
   const [selectedAPIData, setSelectedAPIData] = useState<APIEndpoint | null>(null)
   const [showAPIChangeWarning, setShowAPIChangeWarning] = useState(false)
   const [pendingAPIChange, setPendingAPIChange] = useState<string>("")
-  const [apiFields, setApiFields] = useState<
-    Array<{
-      name: string
-      type: string
-      required: boolean
-      description: string
-    }>
-  >([])
 
   const [sampleResponse, setSampleResponse] = useState("")
   const [mappingInstructions, setMappingInstructions] = useState("")
@@ -159,7 +154,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     { name: string; artifact_id: string; content: string }[]
   >([])
 
-  // NEW: Track artifact ids (schema, mapper_code, mongoose_model)
   const [artifactIds, setArtifactIds] = useState<ArtifactsIds | null>(null)
 
   // Helpers
@@ -184,7 +178,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     if (apiData) {
       setSelectedAPI(apiId)
       setSelectedAPIData(apiData)
-      setApiFields(apiData.fields ?? [])
 
       let formattedResponse = ""
       if (apiData.sampleResponse) {
@@ -204,30 +197,31 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
       setMappingInstructions("")
       setMappedOutput("")
       setGeneratedFunction(null)
-      // reset artifacts when switching API
       setArtifactIds(null)
     }
   }
 
   const proceedToMainInterface = () => {
-    if (!transformName.trim() || !transformDescription.trim() || !selectedAPI) {
+    if (!transformName.trim() || !selectedAPI) {
       toast({
         title: "Missing Information",
-        description: "Please fill in name, description, and select an API before proceeding.",
+        description: "Please fill in name and select an API before proceeding.",
         variant: "destructive",
       })
       return
     }
-
     setShowConfiguration(false)
     setShowMainInterface(true)
   }
 
-  const skipAPIFields = () => {
-    proceedToMainInterface()
-  }
+  const skipAPIFields = () => proceedToMainInterface()
 
   const backToConfiguration = () => {
+    // In edit mode, go back to list instead of config screen
+    if (initialFormatter) {
+      router.push("/formatters")
+      return
+    }
     setShowConfiguration(true)
     setShowMainInterface(false)
   }
@@ -237,41 +231,25 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     setShowAPIChangeWarning(false)
     setPendingAPIChange("")
   }
-
   const cancelAPIChange = () => {
     setShowAPIChangeWarning(false)
     setPendingAPIChange("")
-  }
-
-  const updateAPIField = (index: number, field: string, value: any) => {
-    const updatedFields = [...apiFields]
-    updatedFields[index] = { ...updatedFields[index], [field]: value }
-    setApiFields(updatedFields)
   }
 
   const beautifyJSON = (jsonString: string): string => {
     try {
       const parsed = JSON.parse(jsonString)
       return JSON.stringify(parsed, null, 2)
-    } catch {
-      return jsonString
-    }
+    } catch { return jsonString }
   }
-
   const validateJSON = (jsonString: string): boolean => {
     if (!jsonString.trim()) return false
-    try {
-      JSON.parse(jsonString)
-      return true
-    } catch {
-      return false
-    }
+    try { JSON.parse(jsonString); return true } catch { return false }
   }
 
   useEffect(() => {
     setSampleResponseValid(sampleResponse ? validateJSON(sampleResponse) : null)
   }, [sampleResponse])
-
   useEffect(() => {
     setMappedOutputValid(mappedOutput ? validateJSON(mappedOutput) : null)
   }, [mappedOutput])
@@ -288,10 +266,9 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     setMappingInstructions(value)
     setCursorPosition(cursorPos)
 
-    // Check for @ mention
+    // @ suggestions
     const textBeforeCursor = value.substring(0, cursorPos)
     const lastAtIndex = textBeforeCursor.lastIndexOf("@")
-
     if (lastAtIndex !== -1) {
       const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
       if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
@@ -316,11 +293,9 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     const textBeforeCursor = mappingInstructions.substring(0, cursorPosition)
     const textAfterCursor = mappingInstructions.substring(cursorPosition)
     const lastAtIndex = textBeforeCursor.lastIndexOf("@")
-
     const newText = textBeforeCursor.substring(0, lastAtIndex + 1) + suggestion.name + textAfterCursor
     setMappingInstructions(newText)
     setShowSuggestions(false)
-
     setTimeout(() => {
       if (instructionsRef.current) {
         instructionsRef.current.focus()
@@ -330,76 +305,8 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     }, 0)
   }
 
-  const handleInstructionsBlur = async () => {
-    if (sampleResponse && mappingInstructions && sampleResponseValid) {
-      const formatter_key = toFormatterKey(transformName);
-      setIsSchemaGenerateLoading(true);
-      try {
-        const response = await fetch(api(`/api/gen/preview-output`), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            api_id: selectedAPIData?.id || transformName,
-            formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id || undefined,
-            formatter_name: transformName,
-            formatter_key: formatter_key,
-            description: transformDescription,
-            sample_response: safeParse(sampleResponse),
-            instructions: mappingInstructions,
-            preferences: { strict_schema: true },
-          }),
-        });
-
-        if (!response.ok) {
-          setIsSchemaGenerateLoading(false);
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const { data } = await response.json();
-
-        if (data && data.mapped_output) {
-          setSchemaGenerateResponse(data)
-
-          // NEW: capture artifacts if backend returned formatter with artifacts
-          const fromPreviewArtifacts: ArtifactsIds | null =
-            data?.formatter?.artifacts
-              ? {
-                schema: data.formatter.artifacts.schema ?? null,
-                mapper_code: data.formatter.artifacts.mapper_code ?? null,
-                mongoose_model: data.formatter.artifacts.mongoose_model ?? null,
-              }
-              : null
-          if (fromPreviewArtifacts) setArtifactIds(fromPreviewArtifacts)
-
-          setIsSchemaGenerateLoading(false);
-          setMappedOutput(JSON.stringify(data.mapped_output, null, 2));
-        } else {
-          setMappedOutput("");
-          setIsSchemaGenerateLoading(false);
-
-          toast({
-            title: "Invalid Response",
-            description: "API did not return a mapped_output field.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        setIsSchemaGenerateLoading(false);
-        console.error("Schema generation failed:", error);
-        setMappedOutput("");
-        toast({
-          title: "Error",
-          description: "Failed to generate mapped output from API.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
+  // ---- Preview (explicit button) ----
   const previewMappedOutput = async () => {
-    // basic validation
     if (!sampleResponse || !mappingInstructions || !sampleResponseValid) {
       toast({
         title: "Missing data",
@@ -409,8 +316,8 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
       return
     }
 
-    const formatter_key = toFormatterKey(transformName);
-    setIsSchemaGenerateLoading(true);
+    const formatter_key = toFormatterKey(transformName)
+    setIsSchemaGenerateLoading(true)
     try {
       const response = await fetch(api(`/api/gen/preview-output`), {
         method: "POST",
@@ -420,62 +327,53 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
           formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id || undefined,
           formatter_name: transformName,
           formatter_key,
-          description: transformDescription,
+          description: "", // description removed from UI
           sample_response: safeParse(sampleResponse),
           instructions: mappingInstructions,
           preferences: { strict_schema: true },
         }),
-      });
+      })
 
       if (!response.ok) {
-        setIsSchemaGenerateLoading(false);
-        throw new Error(`API error: ${response.status}`);
+        setIsSchemaGenerateLoading(false)
+        throw new Error(`API error: ${response.status}`)
       }
 
-      const { data } = await response.json();
+      const { data } = await response.json()
 
       if (data && data.mapped_output) {
-        setSchemaGenerateResponse(data);
-
-        // keep artifact ids if backend returned them
-        const fromPreviewArtifacts =
-          data?.formatter?.artifacts
-            ? {
-              schema: data.formatter.artifacts.schema ?? null,
-              mapper_code: data.formatter.artifacts.mapper_code ?? null,
-              mongoose_model: data.formatter.artifacts.mongoose_model ?? null,
-            }
-            : null;
-        if (fromPreviewArtifacts) setArtifactIds(fromPreviewArtifacts);
-
-        setMappedOutput(JSON.stringify(data.mapped_output, null, 2));
+        setSchemaGenerateResponse(data)
+        // collect artifact ids from multiple shapes
+        const ids =
+          data?.formatter?.artifacts ??
+          data?.artifacts ??
+          null
+        if (ids) {
+          setArtifactIds({
+            schema: ids.schema ?? null,
+            mapper_code: ids.mapper_code ?? null,
+            mongoose_model: ids.mongoose_model ?? null,
+          })
+        }
+        setMappedOutput(JSON.stringify(data.mapped_output, null, 2))
       } else {
-        setMappedOutput("");
-        toast({
-          title: "Invalid Response",
-          description: "API did not return a mapped_output field.",
-          variant: "destructive",
-        });
+        setMappedOutput("")
+        toast({ title: "Invalid Response", description: "API did not return a mapped_output field.", variant: "destructive" })
       }
     } catch (error) {
-      console.error("Schema generation failed:", error);
-      setMappedOutput("");
-      toast({
-        title: "Error",
-        description: "Failed to generate mapped output from API.",
-        variant: "destructive",
-      });
+      console.error("Schema generation failed:", error)
+      setMappedOutput("")
+      toast({ title: "Error", description: "Failed to generate mapped output from API.", variant: "destructive" })
     } finally {
-      setIsSchemaGenerateLoading(false);
+      setIsSchemaGenerateLoading(false)
     }
-  };
-
-  const validateInputs = () => {
-    return (
-      transformName.trim() && selectedAPI && sampleResponse.trim() && mappingInstructions.trim() && sampleResponseValid
-    )
   }
 
+  const validateInputs = () => {
+    return transformName.trim() && selectedAPI && sampleResponse.trim() && mappingInstructions.trim() && sampleResponseValid
+  }
+
+  // ---- Generate code & artifacts ----
   const handleGenerateFunction = async () => {
     if (!validateInputs()) {
       toast({
@@ -489,11 +387,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     const inputSample = safeParse(sampleResponse)
     const outputSample = safeParse(mappedOutput)
     if (!inputSample || !outputSample) {
-      toast({
-        title: "Invalid JSON",
-        description: "Fix JSON before continuing.",
-        variant: "destructive",
-      })
+      toast({ title: "Invalid JSON", description: "Fix JSON before continuing.", variant: "destructive" })
       return
     }
 
@@ -502,53 +396,60 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     try {
       const response = await fetch(api(`/api/gen/code`), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedAPIData?.id || "",
           formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id,
           model_name: transformName,
-          inputsample: inputSample,     // ✅ input should be raw sample
-          outputsample: outputSample,   // ✅ output should be mapped
+          inputsample: inputSample,
+          outputsample: outputSample,
           instructions: mappingInstructions,
-          preferences: { naming: namingStyle, strict_schema: true }
+          preferences: { naming: namingStyle, strict_schema: true },
         }),
       })
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
       const { data } = await response.json()
 
-      // NEW: If backend returns artifacts ids here, capture them
-      if (data?.artifacts) {
+      // collect artifact ids from any shape available
+      let ids: any =
+        data?.formatter?.artifacts ??
+        data?.artifacts ??
+        null
+
+      // infer from created file names if necessary
+      if (!ids && Array.isArray(data?.created)) {
+        const guess: ArtifactsIds = { schema: null, mapper_code: null, mongoose_model: null }
+        for (const f of data.created) {
+          const n = String(f?.name || "").toLowerCase()
+          if (n.includes("schema") || n.endsWith(".json")) guess.schema = f.artifact_id
+          else if (n.includes("mongoose") || n.includes("model")) guess.mongoose_model = f.artifact_id
+          else if (n.includes("mapper")) guess.mapper_code = f.artifact_id
+        }
+        ids = guess
+      }
+      if (ids) {
         setArtifactIds({
-          schema: data.artifacts.schema ?? null,
-          mapper_code: data.artifacts.mapper_code ?? null,
-          mongoose_model: data.artifacts.mongoose_model ?? null,
+          schema: ids.schema ?? null,
+          mapper_code: ids.mapper_code ?? null,
+          mongoose_model: ids.mongoose_model ?? null,
         })
       }
 
-      // Existing behavior: if "created" array is present, fetch their contents and show dialog
+      // If "created" present, fetch contents for viewer
       if (data.created && Array.isArray(data.created)) {
         const files = await Promise.all(
           data.created.map(async (file: any) => {
             const res = await fetch(api(`/api/artifacts/${file.artifact_id}`))
             if (!res.ok) throw new Error(`Artifact fetch failed: ${res.status}`)
             const raw = await res.text()
-
             let content = raw
             let name = file.name || "artifact.txt"
             try {
               const json = JSON.parse(raw)
               content = typeof json.content === "string" ? json.content : raw
               name = json?.meta?.files?.[0]?.name || name
-            } catch {
-              // keep raw
-            }
-
+            } catch { /* keep raw */ }
             return { ...file, name, content }
           })
         )
@@ -561,24 +462,17 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
       })
       setShowFunctionPopup(true)
 
-      toast({
-        title: "🚀 Function generated",
-        description: "Review the generated function code.",
-      })
+      toast({ title: "🚀 Function generated", description: "Review the generated function code." })
     } catch (error) {
       console.error("Code generation failed:", error)
-      toast({
-        title: "Error",
-        description: "Failed to generate function code from API.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to generate function code from API.", variant: "destructive" })
     } finally {
       setIsGeneratingFunction(false)
     }
   }
 
+  // ---- Test ----
   const handleTestFunction = async () => {
-    // Only allow test when both mapper_code and mongoose_model exist
     if (!(artifactIds?.mapper_code && artifactIds?.mongoose_model)) {
       toast({
         title: "Artifacts not ready",
@@ -587,7 +481,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
       })
       return
     }
-
     setTestInput(sampleResponse)
     setTestOutput("")
     setShowTestPopup(true)
@@ -595,57 +488,33 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
   const executeTest = async () => {
     if (!testInput) return
-
     const parsed = safeParse(testInput)
     if (!parsed) {
-      toast({
-        title: "Invalid JSON",
-        description: "Please provide valid JSON for test input.",
-        variant: "destructive",
-      })
+      toast({ title: "Invalid JSON", description: "Please provide valid JSON for test input.", variant: "destructive" })
       return
     }
 
     setIsTesting(true)
     setTestOutput("")
-
     try {
       const response = await fetch(api(`/api/test/test`), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedAPIData?.id || "",
           sample_request: parsed,
           formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id,
-          options: {
-            validate_schema: true,
-            run_model_shape_check: false,
-          },
+          options: { validate_schema: true, run_model_shape_check: false },
         }),
       })
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
       setTestOutput(JSON.stringify(data?.mapped_output, null, 2))
-
-      toast({
-        title: "✅ Test successful",
-        description: "Function executed successfully with sample data.",
-      })
+      toast({ title: "✅ Test successful", description: "Function executed successfully with sample data." })
     } catch (error) {
       console.error("Function test failed:", error)
       setTestOutput(`Error: ${error instanceof Error ? error.message : "Failed to execute function"}`)
-
-      toast({
-        title: "❌ Test failed",
-        description: "Function execution failed. Check your sample data.",
-        variant: "destructive",
-      })
+      toast({ title: "❌ Test failed", description: "Function execution failed. Check your sample data.", variant: "destructive" })
     } finally {
       setIsTesting(false)
     }
@@ -653,10 +522,8 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
   const handleReset = () => {
     setTransformName("")
-    setTransformDescription("")
     setSelectedAPI("")
     setSelectedAPIData(null)
-    setApiFields([])
     setSampleResponse("")
     setMappingInstructions("")
     setMappedOutput("")
@@ -672,14 +539,10 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
   const copyToClipboard = (content: string) => {
     navigator.clipboard.writeText(content)
-    toast({
-      title: "Copied to clipboard",
-      description: "Content has been copied to your clipboard.",
-    })
+    toast({ title: "Copied to clipboard", description: "Content has been copied to your clipboard." })
   }
 
-  // NEW: fetch & show a single artifact by id
-  // Replace your openArtifact with this:
+  // open single artifact
   const openArtifact = async (id?: string | null, label?: string) => {
     if (!id) {
       toast({ title: "Artifact not available", description: "No artifact id found.", variant: "destructive" })
@@ -688,20 +551,14 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     try {
       const res = await fetch(api(`/api/artifacts/${id}`))
       if (!res.ok) throw new Error(`Artifact fetch failed: ${res.status}`)
-
       const raw = await res.text()
-      // Try JSON first; if not JSON, treat as raw file content
       let content = raw
       let name = label || "artifact.txt"
-
       try {
         const json = JSON.parse(raw)
         content = typeof json.content === "string" ? json.content : raw
         name = json?.meta?.files?.[0]?.name || label || name
-      } catch {
-        // raw stays as-is
-      }
-
+      } catch { /* raw as-is */ }
       setArtifactFiles([{ name, artifact_id: id, content }])
       setShowFunctionPopup(true)
     } catch (e) {
@@ -710,6 +567,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     }
   }
 
+  // Fetch APIs
   useEffect(() => {
     const fetchAPIs = async () => {
       try {
@@ -719,17 +577,13 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
         setAvailableAPIs(data?.data)
       } catch (error) {
         console.error("Failed to fetch APIs:", error)
-        toast({
-          title: "Error",
-          description: "Could not load available APIs.",
-          variant: "destructive",
-        })
+        toast({ title: "Error", description: "Could not load available APIs.", variant: "destructive" })
       }
     }
     fetchAPIs()
-  }, [])
+  }, []) // eslint-disable-line
 
-  // Sync selectedAPIData after APIs load or when selectedAPI changes
+  // Sync selected API object
   useEffect(() => {
     if (selectedAPI && availableAPIs.length) {
       const apiData = availableAPIs.find(a => a.id === selectedAPI) ?? null
@@ -737,25 +591,19 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     }
   }, [selectedAPI, availableAPIs])
 
-  // Edit mode prefill
+  // Prefill edit mode
   useEffect(() => {
     if (!initialFormatter) return
-
-    // Prefill transform details
     setTransformName(initialFormatter.name || "")
-    setTransformDescription(initialFormatter.description || "")
-
     setSelectedAPI(initialFormatter.api_id)
 
     const mappedInput = initialFormatter.metadata?.input_sample
-    const mappedOutput = initialFormatter.metadata?.output_sample
+    const mappedOut = initialFormatter.metadata?.output_sample
     const instructions = initialFormatter.metadata?.instructions
-
     if (mappedInput) setSampleResponse(JSON.stringify(mappedInput, null, 2))
     if (instructions) setMappingInstructions(instructions)
-    if (mappedOutput) setMappedOutput(JSON.stringify(mappedOutput, null, 2))
+    if (mappedOut) setMappedOutput(JSON.stringify(mappedOut, null, 2))
 
-    // NEW: pick artifacts if present on initial formatter
     const fmtArtifacts = (initialFormatter as any)?.artifacts || (initialFormatter as any)?.metadata?.artifacts
     if (fmtArtifacts) {
       setArtifactIds({
@@ -765,12 +613,10 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
       })
     }
 
-    // Skip config screen automatically in edit mode
     setShowConfiguration(false)
     setShowMainInterface(true)
   }, [initialFormatter])
 
-  // UI helpers
   const canShowTest = Boolean(artifactIds?.mapper_code && artifactIds?.mongoose_model)
 
   return (
@@ -794,15 +640,9 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                     onChange={(e) => setTransformName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="transform-description">Description *</Label>
-                  <Input
-                    id="transform-description"
-                    placeholder="Brief description of the transformation"
-                    value={transformDescription}
-                    onChange={(e) => setTransformDescription(e.target.value)}
-                  />
-                </div>
+
+                {/* Description removed */}
+
                 <div className="space-y-2">
                   <Label htmlFor="api-select">API Endpoint *</Label>
                   <Select value={selectedAPI} onValueChange={handleAPIChange}>
@@ -811,7 +651,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {availableAPIs.map((api) => (
-                        <SelectItem key={api.id} value={api.id}>
+                        <SelectItem key={api.id} value={api.id} className="cursor-pointer">
                           <div className="flex flex-col">
                             <span className="font-medium">{api.name}</span>
                             <span className="font-medium">{api.id}</span>
@@ -823,73 +663,23 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                 </div>
               </div>
 
-              {selectedAPIData && (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">API Fields Configuration</Label>
-                      <span className="text-sm text-muted-foreground">{selectedAPIData.description}</span>
-                    </div>
-                    <div className="border border-border">
-                      <div className="grid grid-cols-4 gap-4 p-3 bg-muted/50 border-b border-border text-sm font-medium">
-                        <div>Field Name</div>
-                        <div>Type</div>
-                        <div>Required</div>
-                        <div>Description</div>
-                      </div>
-                      {apiFields.map((field, index) => (
-                        <div key={index} className="grid grid-cols-4 gap-4 p-3 border-b border-border last:border-b-0">
-                          <Input
-                            value={field.name}
-                            onChange={(e) => updateAPIField(index, "name", e.target.value)}
-                            className="h-8"
-                          />
-                          <Select value={field.type} onValueChange={(value) => updateAPIField(index, "type", value)}>
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="string">string</SelectItem>
-                              <SelectItem value="number">number</SelectItem>
-                              <SelectItem value="boolean">boolean</SelectItem>
-                              <SelectItem value="object">object</SelectItem>
-                              <SelectItem value="array">array</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <div className="flex items-center">
-                            <Checkbox
-                              checked={field.required}
-                              onCheckedChange={(checked) => updateAPIField(index, "required", checked === true)}
-                            />
-                          </div>
-                          <Input
-                            value={field.description}
-                            onChange={(e) => updateAPIField(index, "description", e.target.value)}
-                            className="h-8"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-center gap-4">
-                    <Button variant="outline" onClick={skipAPIFields}>
-                      Skip Configuration
-                    </Button>
-                    <Button onClick={proceedToMainInterface} className="bg-primary hover:bg-primary/90">
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                      Proceed to Transform
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* API Fields Configuration flow removed */}
+              <div className="flex justify-center gap-4 mt-4">
+                <Button variant="outline" onClick={skipAPIFields} className="cursor-pointer">
+                  Skip Configuration
+                </Button>
+                <Button onClick={proceedToMainInterface} className="bg-primary hover:bg-primary/90 cursor-pointer">
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  Proceed to Transform
+                </Button>
+              </div>
             </>
           )}
 
           {showMainInterface && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Button variant="ghost" size="sm" onClick={backToConfiguration} className="h-auto p-1">
+                <Button variant="ghost" size="sm" onClick={backToConfiguration} className="h-auto p-1 cursor-pointer">
                   ← Back to Configuration
                 </Button>
                 <span>•</span>
@@ -902,10 +692,11 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => router.push("/formatters")}
+                  className="cursor-pointer"
                 >
                   Go to List
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleReset}>
+                <Button variant="outline" size="sm" onClick={handleReset} className="cursor-pointer">
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset All
                 </Button>
@@ -919,7 +710,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
         <section className="flex-1 min-h-0">
           {/* Unified headers */}
           <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
-            {/* H1: Sample Response */}
+            {/* H1 */}
             <div className="px-6 py-5">
               <div className="flex items-center gap-2">
                 {sampleResponseValid === null ? (
@@ -933,16 +724,18 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
               </div>
             </div>
 
-            {/* H2: Transform Instructions (single row, aligned) */}
-            <div className="px-6 py-5">
-              <div className="flex items-center justify-between gap-3">
+            {/* H2 */}
+            {/* H2: Transform Instructions (title row + actions row) */}
+            <div className="px-6 py-5 min-h-[72px]">
+              <div className="grid grid-rows-[auto_auto] gap-2">
+                {/* Row 1 — title */}
                 <div className="flex items-center gap-2 min-w-0">
-                  <Settings className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Transform Instructions</h2>
+                  <Settings className="w-5 h-5 text-primary shrink-0" />
+                  <h2 className="text-lg font-semibold truncate">Transform Instructions</h2>
                 </div>
 
-                {/* Actions inline to keep header height equal */}
-                <div className="flex items-center gap-2">
+                {/* Row 2 — actions toolbar */}
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     onClick={previewMappedOutput}
                     variant="secondary"
@@ -958,26 +751,40 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                     <Button
                       variant="destructive"
                       size="sm"
+                      className="cursor-pointer"
                       onClick={() => previewCtrlRef.current?.abort()}
                     >
                       Cancel Preview
                     </Button>
                   )}
 
+                  {canShowTest && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestFunction}
+                      className="cursor-pointer"
+                      title="Test Function"
+                    >
+                      <TestTube className="w-4 h-4 mr-2" />
+                      Test
+                    </Button>
+                  )}
+
                   <Button
                     onClick={handleGenerateFunction}
                     disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
-                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground cursor-pointer"
                     size="sm"
                   >
                     <Code className="w-4 h-4 mr-2" />
                     {isGeneratingFunction ? "Generating..." : "Generate Function"}
                   </Button>
 
-                  {/* Artifact icons */}
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="cursor-pointer"
                     title="View Schema Artifact"
                     onClick={() => openArtifact(artifactIds?.schema, "schema.json")}
                     disabled={!artifactIds?.schema}
@@ -987,6 +794,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="cursor-pointer"
                     title="View Mapper Code"
                     onClick={() => openArtifact(artifactIds?.mapper_code, "mapper_code.ts")}
                     disabled={!artifactIds?.mapper_code}
@@ -996,6 +804,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="cursor-pointer"
                     title="View Mongoose Model"
                     onClick={() => openArtifact(artifactIds?.mongoose_model, "mongoose_model.ts")}
                     disabled={!artifactIds?.mongoose_model}
@@ -1006,7 +815,8 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
               </div>
             </div>
 
-            {/* H3: Mapped Output */}
+
+            {/* H3 */}
             <div className="px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1020,7 +830,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <h2 className="text-lg font-semibold">Mapped Output</h2>
                 </div>
                 {mappedOutput && (
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(mappedOutput)}>
+                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(mappedOutput)} className="cursor-pointer">
                     <Copy className="w-4 h-4 mr-2" />
                     Copy
                   </Button>
@@ -1031,7 +841,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
           {/* Body row */}
           <div className="grid grid-cols-3 divide-x divide-border min-h-0 h-full">
-            {/* Col 1: Sample Response */}
+            {/* Col 1 */}
             <div className="min-h-0 flex flex-col">
               <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
                 <div className="space-y-2">
@@ -1041,17 +851,15 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <Textarea
                     id="sample-response"
                     placeholder={
-                      selectedAPIData
-                        ? "Sample response loaded from API"
-                        : "Select an API first or paste JSON response"
+                      selectedAPIData ? "Sample response loaded from API" : "Select an API first or paste JSON response"
                     }
                     value={sampleResponse}
                     onChange={(e) => setSampleResponse(e.target.value)}
                     onBlur={handleSampleResponseBlur}
                     spellCheck={false}
                     className={`font-mono text-sm resize-none overflow-auto w-full
-                min-h-[300px] max-h-[calc(100vh-320px)]
-                ${sampleResponseValid === false
+                      min-h-[300px] max-h-[calc(100vh-320px)]
+                      ${sampleResponseValid === false
                         ? "border-red-500 focus:border-red-500"
                         : sampleResponseValid === true
                           ? "border-green-500"
@@ -1071,11 +879,9 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="p-0 h-auto font-normal text-sm text-muted-foreground hover:text-foreground"
+                      className="p-0 h-auto font-normal text-sm text-muted-foreground hover:text-foreground cursor-pointer"
                     >
-                      <ChevronDown
-                        className={`w-4 h-4 mr-2 transition-transform ${showPreferences ? "rotate-180" : ""}`}
-                      />
+                      <ChevronDown className={`w-4 h-4 mr-2 transition-transform ${showPreferences ? "rotate-180" : ""}`} />
                       Schema Preferences
                     </Button>
                   </CollapsibleTrigger>
@@ -1087,8 +893,8 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="snake_case">snake_case</SelectItem>
-                          <SelectItem value="camelCase">camelCase</SelectItem>
+                          <SelectItem value="snake_case" className="cursor-pointer">snake_case</SelectItem>
+                          <SelectItem value="camelCase" className="cursor-pointer">camelCase</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1108,17 +914,16 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                         id="disallow-additional"
                         checked={disallowAdditional}
                         onCheckedChange={(checked) => setDisallowAdditional(!!checked)}
+                        className="cursor-pointer"
                       />
-                      <Label htmlFor="disallow-additional" className="text-sm">
-                        Disallow additional properties
-                      </Label>
+                      <Label htmlFor="disallow-additional" className="text-sm">Disallow additional properties</Label>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
               </div>
             </div>
 
-            {/* Col 2: Transform Instructions (no extra border!) */}
+            {/* Col 2 */}
             <div className="min-h-0 flex flex-col">
               <div className="p-6 space-y-4 flex-1 overflow-y-auto relative">
                 <div className="space-y-2">
@@ -1130,9 +935,10 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                       ref={instructionsRef}
                       value={mappingInstructions}
                       onChange={handleInstructionsChange}
-                      className="min-h-[300px] resize-none font-mono text-sm w-full border border-input rounded px-3 py-2"
+                      spellCheck={false}
+                      className="min-h-[420px] leading-6 font-mono text-[13px] md:text-sm w-full border border-input rounded px-3 py-3 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 placeholder:text-muted-foreground/70"
                       placeholder={`1) remove fields: sales_meta_data, origin
-2) rename: SalesPrice → salesPrice, MakingCost → makingCost  
+2) rename: SalesPrice → salesPrice, MakingCost → makingCost
 3) cast to number: salesPrice, makingCost
 4) compute profit = @calculateProfit(salesPrice, makingCost)
 5) add timestamp = @currentDate
@@ -1146,7 +952,7 @@ Type @ to see available functions and variables`}
                         {suggestions.map((suggestion, index) => (
                           <button
                             key={index}
-                            className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col"
+                            className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col cursor-pointer"
                             onClick={() => insertSuggestion(suggestion)}
                           >
                             <span className="font-medium">@{suggestion.name}</span>
@@ -1168,7 +974,7 @@ Type @ to see available functions and variables`}
                         <Code className="w-5 h-5 text-blue-500" />
                         <span className="font-medium text-blue-700 dark:text-blue-300">Function Ready</span>
                       </div>
-                      <Button onClick={handleTestFunction} disabled={!sampleResponse} size="sm" variant="outline">
+                      <Button onClick={handleTestFunction} disabled={!sampleResponse} size="sm" variant="outline" className="cursor-pointer">
                         <TestTube className="w-4 h-4 mr-2" />
                         Test Function
                       </Button>
@@ -1178,7 +984,7 @@ Type @ to see available functions and variables`}
               </div>
             </div>
 
-            {/* Col 3: Mapped Output */}
+            {/* Col 3 */}
             <div className="min-h-0 flex flex-col">
               <div className="p-6 flex-1 min-h-0 overflow-y-auto">
                 {isSchemaGenerateLoading ? (
@@ -1228,8 +1034,6 @@ Type @ to see available functions and variables`}
         </section>
       )}
 
-
-
       {/* Change API warning */}
       <AlertDialog open={showAPIChangeWarning} onOpenChange={setShowAPIChangeWarning}>
         <AlertDialogContent>
@@ -1244,8 +1048,8 @@ Type @ to see available functions and variables`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelAPIChange}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmAPIChange} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogCancel onClick={cancelAPIChange} className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAPIChange} className="bg-red-600 hover:bg-red-700 cursor-pointer">
               Change API & Reset
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1256,15 +1060,10 @@ Type @ to see available functions and variables`}
       <Dialog open={showFunctionPopup} onOpenChange={setShowFunctionPopup}>
         <DialogContent
           className="
-          w-[95vw]
-          sm:max-w-[95vw]
-          md:max-w-[92vw]
-          lg:max-w-[1200px]
-          xl:max-w-[1400px]
-          2xl:max-w-[1600px]
-          max-h-[88vh]
-          overflow-y-auto
-        ">
+            w-[95vw] sm:max-w-[95vw] md:max-w-[92vw] lg:max-w-[1200px]
+            xl:max-w-[1400px] 2xl:max-w-[1600px] max-h-[88vh] overflow-y-auto
+          "
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Code className="w-5 h-5" />
@@ -1273,7 +1072,7 @@ Type @ to see available functions and variables`}
           </DialogHeader>
 
           {artifactFiles.length > 0 ? (
-            <div className="grid gap-6 grid-cols-1"> {/* force single column */}
+            <div className="grid gap-6 grid-cols-1">
               {artifactFiles.map((file) => {
                 const artifact: ArtifactResponse = {
                   artifact_id: file.artifact_id,
@@ -1281,7 +1080,7 @@ Type @ to see available functions and variables`}
                   api_id: selectedAPIData?.id || "",
                   type: inferArtifactType(file.name),
                   version: "1.0.0",
-                  content: file.content,            // ✅ only the code content
+                  content: file.content,
                   meta: { files: [{ path: file.name, name: file.name }] },
                 }
                 return (
@@ -1296,7 +1095,7 @@ Type @ to see available functions and variables`}
           )}
 
           <div className="flex justify-end mt-4">
-            <Button variant="outline" onClick={() => setShowFunctionPopup(false)}>
+            <Button variant="outline" onClick={() => setShowFunctionPopup(false)} className="cursor-pointer">
               Close
             </Button>
           </div>
@@ -1334,11 +1133,11 @@ Type @ to see available functions and variables`}
               </div>
             </div>
             <div className="flex justify-between">
-              <Button onClick={executeTest} disabled={isTesting || !testInput}>
+              <Button onClick={executeTest} disabled={isTesting || !testInput} className="cursor-pointer">
                 <TestTube className="w-4 h-4 mr-2" />
                 {isTesting ? "Testing..." : "Execute Test"}
               </Button>
-              <Button variant="outline" onClick={() => setShowTestPopup(false)}>
+              <Button variant="outline" onClick={() => setShowTestPopup(false)} className="cursor-pointer">
                 Close
               </Button>
             </div>
