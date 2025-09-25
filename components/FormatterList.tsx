@@ -30,7 +30,7 @@ export function FormatterList() {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/formatters`)
                 if (!res.ok) throw new Error(`API error: ${res.status}`)
-                const data = await res.json()
+                const {data} = await res.json()
                 setFormatters(data?.formatters || [])
             } catch (error) {
                 console.error("Failed to fetch formatters:", error)

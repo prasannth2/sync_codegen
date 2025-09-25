@@ -102,7 +102,7 @@ export function MapperSchemaGenerator() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const formatterId = searchParams.get("formatter_id");
-  const id = searchParams.get("id");
+  const id = searchParams.get("api_id");
   const [transformName, setTransformName] = useState("")
   const [transformDescription, setTransformDescription] = useState("")
   const [selectedAPI, setSelectedAPI] = useState<string>("")
@@ -572,9 +572,9 @@ export function MapperSchemaGenerator() {
         // 1. Get all formatters
         const res = await fetch(`${API_BASE_URL}/api/formatters`);
         if (!res.ok) throw new Error(`Formatter API error: ${res.status}`);
-        const data = await res.json();
+        const { data } = await res.json();
 
-        const formatter = data?.formatters?.find((f: any) => f.id === id);
+        const formatter = data?.formatters?.find((f: any) => f.api_id === id);
         if (formatter) {
           console.log('formatter', formatter)
           // Prefill transform details
@@ -582,7 +582,7 @@ export function MapperSchemaGenerator() {
           setTransformDescription(formatter.description || "");
 
           // Match API
-          const apiMatch = availableAPIs.find((api) => api.id === formatter.id);
+          const apiMatch = availableAPIs.find((api) => api.id === formatter.api_id);
           if (apiMatch) {
             applyAPIChange(apiMatch.id);
 
@@ -592,7 +592,7 @@ export function MapperSchemaGenerator() {
           }
 
           // 2. Fetch latest artifacts for this formatter
-          const artifactsRes = await fetch(`${API_BASE_URL}/api/artifacts?formatter_id=${formatterId}`);
+          /* const artifactsRes = await fetch(`${API_BASE_URL}/api/artifacts?formatter_id=${formatterId}`);
           if (artifactsRes.ok) {
             const artifactsData = await artifactsRes.json();
             if (Array.isArray(artifactsData?.artifacts) && artifactsData.artifacts.length > 0) {
@@ -613,7 +613,7 @@ export function MapperSchemaGenerator() {
                 functionName: `${(formatter.formatter_name || "Transform").replace(/\s+/g, "")}Transform`,
               });
             }
-          }
+          } */
         }
       } catch (err) {
         console.error("Failed to fetch formatter/artifacts:", err);
