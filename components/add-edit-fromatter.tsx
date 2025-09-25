@@ -35,6 +35,7 @@ import {
   FileCode2,
   FileJson,
   FileType,
+  PlayCircle,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -392,6 +393,78 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const previewMappedOutput = async () => {
+    // basic validation
+    if (!sampleResponse || !mappingInstructions || !sampleResponseValid) {
+      toast({
+        title: "Missing data",
+        description: "Provide valid JSON response and instructions, then click Preview.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const formatter_key = toFormatterKey(transformName);
+    setIsSchemaGenerateLoading(true);
+    try {
+      const response = await fetch(api(`/api/gen/preview-output`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_id: selectedAPIData?.id || transformName,
+          formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id || undefined,
+          formatter_name: transformName,
+          formatter_key,
+          description: transformDescription,
+          sample_response: safeParse(sampleResponse),
+          instructions: mappingInstructions,
+          preferences: { strict_schema: true },
+        }),
+      });
+
+      if (!response.ok) {
+        setIsSchemaGenerateLoading(false);
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const { data } = await response.json();
+
+      if (data && data.mapped_output) {
+        setSchemaGenerateResponse(data);
+
+        // keep artifact ids if backend returned them
+        const fromPreviewArtifacts =
+          data?.formatter?.artifacts
+            ? {
+              schema: data.formatter.artifacts.schema ?? null,
+              mapper_code: data.formatter.artifacts.mapper_code ?? null,
+              mongoose_model: data.formatter.artifacts.mongoose_model ?? null,
+            }
+            : null;
+        if (fromPreviewArtifacts) setArtifactIds(fromPreviewArtifacts);
+
+        setMappedOutput(JSON.stringify(data.mapped_output, null, 2));
+      } else {
+        setMappedOutput("");
+        toast({
+          title: "Invalid Response",
+          description: "API did not return a mapped_output field.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Schema generation failed:", error);
+      setMappedOutput("");
+      toast({
+        title: "Error",
+        description: "Failed to generate mapped output from API.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSchemaGenerateLoading(false);
     }
   };
 
@@ -950,15 +1023,28 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <h2 className="text-lg font-semibold">Transform Instructions</h2>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <Button
-                    onClick={handleGenerateFunction}
-                    disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
-                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    size="sm"
-                  >
-                    <Code className="w-4 h-4 mr-2" />
-                    {isGeneratingFunction ? "Generating..." : "Generate Function"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={previewMappedOutput}
+                      variant="secondary"
+                      size="sm"
+                      className="cursor-pointer"
+                      disabled={isSchemaGenerateLoading || !sampleResponseValid || !mappingInstructions.trim()}
+                    >
+                      <PlayCircle className="w-4 h-4 mr-2" />
+                      {isSchemaGenerateLoading ? "Previewing..." : "Preview Output"}
+                    </Button>
+
+                    <Button
+                      onClick={handleGenerateFunction}
+                      disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                      size="sm"
+                    >
+                      <Code className="w-4 h-4 mr-2" />
+                      {isGeneratingFunction ? "Generating..." : "Generate Function"}
+                    </Button>
+                  </div>
 
                   {/* NEW: Artifact quick actions (three icons) */}
                   <div className="flex items-center gap-2">
@@ -1004,7 +1090,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                     ref={instructionsRef}
                     value={mappingInstructions}
                     onChange={handleInstructionsChange}
-                    onBlur={handleInstructionsBlur}
                     className="min-h=[300px] min-h-[300px] resize-none font-mono text-sm w-full border border-input rounded px-3 py-2"
                     placeholder={`1) remove fields: sales_meta_data, origin
 2) rename: SalesPrice → salesPrice, MakingCost → makingCost  
@@ -1161,7 +1246,7 @@ Type @ to see available functions and variables`}
       {/* Generated artifacts / files viewer */}
       <Dialog open={showFunctionPopup} onOpenChange={setShowFunctionPopup}>
         <DialogContent
-        className="
+          className="
           w-[95vw]
           sm:max-w-[95vw]
           md:max-w-[92vw]
