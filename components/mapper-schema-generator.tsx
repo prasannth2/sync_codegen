@@ -56,7 +56,7 @@ interface APIEndpoint {
   method: string
   url: string
   description: string
-  sample_response: string
+  sampleResponse: string
   fields: Array<{
     name: string
     type: string
@@ -167,26 +167,26 @@ export function MapperSchemaGenerator() {
   const applyAPIChange = (apiId: string) => {
     console.log(apiId)
     const apiData = availableAPIs.find((api) => api.id === apiId)
-    console.log(apiData?.sample_response)
-    console.log(typeof apiData?.sample_response)
+    console.log(apiData?.sampleResponse)
+    console.log(typeof apiData?.sampleResponse)
 
     if (apiData) {
       setSelectedAPI(apiId)
       setSelectedAPIData(apiData)
 
       let formattedResponse = ""
-      if (apiData.sample_response) {
-        if (typeof apiData.sample_response === "string") {
+      if (apiData.sampleResponse) {
+        if (typeof apiData.sampleResponse === "string") {
           // Try parsing string to pretty JSON
           try {
-            const parsed = JSON.parse(apiData.sample_response)
+            const parsed = JSON.parse(apiData.sampleResponse)
             formattedResponse = JSON.stringify(parsed, null, 2)
           } catch {
             // fallback to raw string if not valid JSON
-            formattedResponse = apiData.sample_response
+            formattedResponse = apiData.sampleResponse
           }
-        } else if (typeof apiData.sample_response === "object") {
-          formattedResponse = JSON.stringify(apiData.sample_response, null, 2)
+        } else if (typeof apiData.sampleResponse === "object") {
+          formattedResponse = JSON.stringify(apiData.sampleResponse, null, 2)
         }
       }
 
@@ -325,19 +325,19 @@ export function MapperSchemaGenerator() {
       const formatter_key = toFormatterKey(transformName);
       setIsSchemaGenerateLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/schema/generate`, {
+        const response = await fetch(`${API_BASE_URL}/api/gen/preview-output`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            id: selectedAPIData?.id || transformName, // use selected API id or fallback
+            api_id: selectedAPIData?.id || transformName, // use selected API id or fallback
             formatter_id: formatterId || undefined,
             formatter_name: transformName,
             formatter_key: formatter_key,
             description: transformDescription,
             sample_response: JSON.parse(sampleResponse),
-            algorithm_prompt: mappingInstructions,
+            instructions: mappingInstructions,
             preferences: { strict_schema: true },
           }),
         });
@@ -347,21 +347,21 @@ export function MapperSchemaGenerator() {
           throw new Error(`API error: ${response.status}`);
         }
 
-        const data = await response.json();
+        const { data } = await response.json();
 
 
-        if (data && data.mapped_sample) {
+        if (data && data.mapped_output) {
           setSchemaGenerateResponse(data)
           // ✅ show only the mapped sample
           setIsSchemaGenerateLoading(false);
-          setMappedOutput(JSON.stringify(data.mapped_sample, null, 2));
+          setMappedOutput(JSON.stringify(data.mapped_output, null, 2));
         } else {
           setMappedOutput("");
           setIsSchemaGenerateLoading(false);
 
           toast({
             title: "Invalid Response",
-            description: "API did not return a mapped_sample field.",
+            description: "API did not return a mapped_output field.",
             variant: "destructive",
           });
         }
@@ -406,10 +406,11 @@ export function MapperSchemaGenerator() {
         },
         body: JSON.stringify({
           id: selectedAPIData?.id || "", // your backend expects id
-          formatter_id: schemaGenerateResponse?.formatter_id,
+          formatter_id: schemaGenerateResponse?.formatter?.id,
           model_name: transformName,
-          sample_response: JSON.parse(mappedOutput),
-          algorithm_prompt: mappingInstructions,
+          inputsample: JSON.parse(mappedOutput),
+          outputsample: JSON.parse(sampleResponse),
+          instructions: mappingInstructions,
           preferences: { naming: namingStyle, strict_schema: true }
         }),
       })
@@ -418,7 +419,7 @@ export function MapperSchemaGenerator() {
         throw new Error(`API error: ${response.status}`)
       }
 
-      const data = await response.json()
+      const { data } = await response.json()
       if (data.created && Array.isArray(data.created)) {
         const files = await Promise.all(
           data.created.map(async (file: any) => {
@@ -477,7 +478,7 @@ export function MapperSchemaGenerator() {
         body: JSON.stringify({
           id: selectedAPIData?.id || "", // must be the real ObjectId
           sample_request: JSON.parse(testInput),
-          formatter_id: schemaGenerateResponse?.formatter_id,
+          formatter_id: schemaGenerateResponse?.formatter?.id,
           options: {
             validate_schema: true,
             run_model_shape_check: false,
@@ -772,7 +773,7 @@ export function MapperSchemaGenerator() {
       </div>
 
       {showMainInterface && (
-        <div className="flex flex-1 h-full">
+        <div className="w-full flex h-full">
           {/* Column 1: Sample Response with JSON Validator */}
           <div className="flex-1 border-r border-border flex flex-col">
             <div className="p-6 border-b border-border flex-shrink-0">
@@ -956,7 +957,7 @@ Type @ to see available functions and variables`}
           </div>
 
           {/* Column 3: Mapped Output with JSON Validation */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 border-r border-border flex flex-col">
             <div className="p-6 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
