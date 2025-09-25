@@ -35,6 +35,9 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import { useRouter, useSearchParams } from "next/navigation"
+
+
 
 
 interface GeneratedFunction {
@@ -96,6 +99,10 @@ const API_BASE_URL = "http://13.200.213.47:4000"
 
 
 export function MapperSchemaGenerator() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const formatterId = searchParams.get("formatter_id");
+  const api_id = searchParams.get("api_id");
   const [transformName, setTransformName] = useState("")
   const [transformDescription, setTransformDescription] = useState("")
   const [selectedAPI, setSelectedAPI] = useState<string>("")
@@ -325,6 +332,7 @@ export function MapperSchemaGenerator() {
           },
           body: JSON.stringify({
             api_id: selectedAPIData?.api_id || transformName, // use selected API id or fallback
+            formatter_id: formatterId || undefined,
             formatter_name: transformName,
             formatter_key: formatter_key,
             description: transformDescription,
@@ -335,6 +343,7 @@ export function MapperSchemaGenerator() {
         });
 
         if (!response.ok) {
+          setIsSchemaGenerateLoading(false);
           throw new Error(`API error: ${response.status}`);
         }
 
@@ -348,6 +357,8 @@ export function MapperSchemaGenerator() {
           setMappedOutput(JSON.stringify(data.mapped_sample, null, 2));
         } else {
           setMappedOutput("");
+          setIsSchemaGenerateLoading(false);
+
           toast({
             title: "Invalid Response",
             description: "API did not return a mapped_sample field.",
@@ -355,6 +366,7 @@ export function MapperSchemaGenerator() {
           });
         }
       } catch (error) {
+        setIsSchemaGenerateLoading(false);
         console.error("Schema generation failed:", error);
         setMappedOutput("");
         toast({
@@ -550,6 +562,70 @@ export function MapperSchemaGenerator() {
   }, [])
 
 
+  useEffect(() => {
+
+    if (!formatterId) return;
+
+    const fetchFormatterAndSet = async () => {
+      try {
+        // 1. Get all formatters
+        const res = await fetch(`${API_BASE_URL}/api/formatters`);
+        if (!res.ok) throw new Error(`Formatter API error: ${res.status}`);
+        const data = await res.json();
+
+        const formatter = data?.formatters?.find((f: any) => f.api_id === api_id);
+        if (formatter) {
+          console.log('formatter', formatter)
+          // Prefill transform details
+          setTransformName(formatter.name || "");
+          setTransformDescription(formatter.description || "");
+
+          // Match API
+          const apiMatch = availableAPIs.find((api) => api.api_id === formatter.api_id);
+          if (apiMatch) {
+            applyAPIChange(apiMatch.api_id);
+
+            // ✅ Skip config screen automatically
+            setShowConfiguration(false);
+            setShowMainInterface(true);
+          }
+
+          // 2. Fetch latest artifacts for this formatter
+          const artifactsRes = await fetch(`${API_BASE_URL}/api/artifacts?formatter_id=${formatterId}`);
+          if (artifactsRes.ok) {
+            const artifactsData = await artifactsRes.json();
+            if (Array.isArray(artifactsData?.artifacts) && artifactsData.artifacts.length > 0) {
+              const files = await Promise.all(
+                artifactsData.artifacts.map(async (file: any) => {
+                  const res = await fetch(`${API_BASE_URL}/api/artifacts/${file.artifact_id}`);
+                  if (!res.ok) throw new Error(`Artifact fetch failed: ${res.status}`);
+                  const text = await res.text();
+                  return { ...file, content: text };
+                })
+              );
+              setArtifactFiles(files);
+
+              // 3. Also set generated function from the latest code
+              const latest = artifactsData.artifacts[0]; // assuming newest is first
+              setGeneratedFunction({
+                code: latest?.content || "",
+                functionName: `${(formatter.formatter_name || "Transform").replace(/\s+/g, "")}Transform`,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch formatter/artifacts:", err);
+      }
+    };
+
+    if (availableAPIs.length > 0) {
+      fetchFormatterAndSet();
+    }
+  }, [searchParams, availableAPIs]);
+
+
+
   return (
     <div className="w-full h-screen flex flex-col">
       <div className="border-b border-border">
@@ -677,10 +753,19 @@ export function MapperSchemaGenerator() {
                 <span>•</span>
                 <span>{selectedAPIData?.name}</span>
               </div>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset All
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/formatters")}
+                >
+                  Go to List
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset All
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -894,20 +979,21 @@ Type @ to see available functions and variables`}
             </div>
 
             <div className="p-6 flex-1 overflow-hidden">
-              {!mappedOutput ? (
+              {isSchemaGenerateLoading ? (
                 <div className="flex items-center justify-center h-full text-center">
                   <div className="space-y-4">
-                    <div className="text-6xl">⚡</div>
+                    <div className="animate-spin text-6xl">⏳</div>
                     <div className="space-y-2">
-                      <p className="text-lg font-medium text-muted-foreground">Preview Output</p>
+                      <p className="text-lg font-medium text-muted-foreground">Generating Schema...</p>
                       <p className="text-sm text-muted-foreground">
-                        Add sample response and instructions, then click outside to see transformation
+                        Please wait while we process your response and instructions.
                       </p>
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : mappedOutput ? (
                 <div className="h-full">
+                  {/* ✅ Show Transformed JSON */}
                   <div className="space-y-2">
                     <Label className="text-base font-semibold">Transformed JSON</Label>
                     <Textarea
@@ -927,8 +1013,22 @@ Type @ to see available functions and variables`}
                     </div>
                   </div>
                 </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div className="space-y-4">
+                    <div className="text-6xl">⚡</div>
+                    <div className="space-y-2">
+                      <p className="text-lg font-medium text-muted-foreground">Preview Output</p>
+                      <p className="text-sm text-muted-foreground">
+                        Add sample response and instructions, then click outside to see transformation
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
+
+
           </div>
         </div>
       )}
