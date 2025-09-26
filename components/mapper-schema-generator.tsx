@@ -37,6 +37,9 @@ import { useEffect, useRef, useState } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
 
+import { APP_NAME, INPUT_SAMPLE_NAME, OUTPUT_SAMPLE_NAME } from "@/config/app"
+
+
 
 
 
@@ -632,7 +635,7 @@ export function MapperSchemaGenerator() {
       <div className="border-b border-border">
         <div className="p-6 space-y-4">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-balance text-foreground">Response Formatter</h1>
+            <h1 className="text-3xl font-bold text-balance text-foreground">{APP_NAME}</h1>
             <p className="text-muted-foreground">Clean your response data with intelligent transformations</p>
           </div>
 
@@ -786,7 +789,7 @@ export function MapperSchemaGenerator() {
                   ) : (
                     <XCircle className="w-5 h-5 text-red-500" />
                   )}
-                  <h2 className="text-lg font-semibold">Sample Response</h2>
+                  <h2 className="text-lg font-semibold">{INPUT_SAMPLE_NAME}</h2>
                 </div>
               </div>
             </div>
@@ -968,7 +971,7 @@ Type @ to see available functions and variables`}
                   ) : (
                     <XCircle className="w-5 h-5 text-red-500" />
                   )}
-                  <h2 className="text-lg font-semibold">Mapped Output</h2>
+                  <h2 className="text-lg font-semibold">{OUTPUT_SAMPLE_NAME}</h2>
                 </div>
                 {mappedOutput && (
                   <Button variant="outline" size="sm" onClick={() => copyToClipboard(mappedOutput)}>

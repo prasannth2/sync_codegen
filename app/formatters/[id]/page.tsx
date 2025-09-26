@@ -1,9 +1,9 @@
 "use client";
 
 import { AddEditFormatter } from "@/components/add-edit-fromatter";
+import { useFormatter } from "@/hooks/use-formatters";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { useFormatter } from "@/hooks/use-formatters";
 
 export default function ApisPage({
   params,
