@@ -100,7 +100,7 @@ export function FormatterList() {
               : "Get started by creating your first formatter."}
           </p>
           {!searchQuery && (
-            <Button onClick={() => router.push("/mapper")}>
+            <Button onClick={() => router.push("/formatters")}>
               <Plus className="mr-2 h-4 w-4" />
               Create Formatter
             </Button>
@@ -122,7 +122,7 @@ export function FormatterList() {
                 <TableRow
                   key={fmt.formatter_id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/mapper?formatter_id=${fmt.api_id}`)}
+                  onClick={() => router.push(`/formatters/${fmt.api_id}`)}
                 >
                   <TableCell className="font-medium">{fmt.name}</TableCell>
                   <TableCell className="font-mono text-sm">{fmt.key}</TableCell>
