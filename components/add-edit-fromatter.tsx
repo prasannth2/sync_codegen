@@ -42,6 +42,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dynamic } from "@/lib/types/mapper"
 import { ArtifactCodeViewer, ArtifactResponse, inferArtifactType } from "./artifacts/artifact-code-viewer"
+import { InstructionEditor } from "./instructions-editor"
 
 interface GeneratedFunction {
   code: string
@@ -121,6 +122,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
   const [sampleResponse, setSampleResponse] = useState("")
   const [mappingInstructions, setMappingInstructions] = useState("")
+  const [selectedMentions, setSelectedMentions] = useState<{ id: string; name: string }[]>([])
   const [mappedOutput, setMappedOutput] = useState("")
   const [namingStyle, setNamingStyle] = useState("snake_case")
   const [requiredFields, setRequiredFields] = useState("")
@@ -139,10 +141,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
 
   const [sampleResponseValid, setSampleResponseValid] = useState<boolean | null>(null)
   const [mappedOutputValid, setMappedOutputValid] = useState<boolean | null>(null)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [suggestions, setSuggestions] = useState<Array<{ name: string; description: string }>>([])
-  const [cursorPosition, setCursorPosition] = useState(0)
-  const instructionsRef = useRef<HTMLTextAreaElement>(null)
 
   const [showConfiguration, setShowConfiguration] = useState(true)
   const [showMainInterface, setShowMainInterface] = useState(false)
@@ -260,51 +258,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     }
   }
 
-  const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
-    const cursorPos = e.target.selectionStart
-    setMappingInstructions(value)
-    setCursorPosition(cursorPos)
-
-    // @ suggestions
-    const textBeforeCursor = value.substring(0, cursorPos)
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@")
-    if (lastAtIndex !== -1) {
-      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
-      if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
-        const query = textAfterAt.toLowerCase()
-        const filteredFunctions = availableFunctions.filter(
-          (f) => f.name.toLowerCase().includes(query) || f.description.toLowerCase().includes(query),
-        )
-        const filteredVariables = availableVariables.filter(
-          (v) => v.name.toLowerCase().includes(query) || v.description.toLowerCase().includes(query),
-        )
-        setSuggestions([...filteredFunctions, ...filteredVariables])
-        setShowSuggestions(true)
-      } else {
-        setShowSuggestions(false)
-      }
-    } else {
-      setShowSuggestions(false)
-    }
-  }
-
-  const insertSuggestion = (suggestion: { name: string; description: string }) => {
-    const textBeforeCursor = mappingInstructions.substring(0, cursorPosition)
-    const textAfterCursor = mappingInstructions.substring(cursorPosition)
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@")
-    const newText = textBeforeCursor.substring(0, lastAtIndex + 1) + suggestion.name + textAfterCursor
-    setMappingInstructions(newText)
-    setShowSuggestions(false)
-    setTimeout(() => {
-      if (instructionsRef.current) {
-        instructionsRef.current.focus()
-        const newCursorPos = lastAtIndex + 1 + suggestion.name.length
-        instructionsRef.current.setSelectionRange(newCursorPos, newCursorPos)
-      }
-    }, 0)
-  }
-
   // ---- Preview (explicit button) ----
   const previewMappedOutput = async () => {
     if (!sampleResponse || !mappingInstructions || !sampleResponseValid) {
@@ -405,6 +358,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
           outputsample: outputSample,
           instructions: mappingInstructions,
           preferences: { naming: namingStyle, strict_schema: true },
+          models: selectedMentions,
         }),
       })
 
@@ -930,38 +884,13 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                   <Label htmlFor="mapping-instructions" className="text-base font-semibold">
                     Step-by-step Instructions *
                   </Label>
-                  <div className="relative">
-                    <textarea
-                      ref={instructionsRef}
-                      value={mappingInstructions}
-                      onChange={handleInstructionsChange}
-                      spellCheck={false}
-                      className="min-h-[420px] leading-6 font-mono text-[13px] md:text-sm w-full border border-input rounded px-3 py-3 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 placeholder:text-muted-foreground/70"
-                      placeholder={`1) remove fields: sales_meta_data, origin
-2) rename: SalesPrice → salesPrice, MakingCost → makingCost
-3) cast to number: salesPrice, makingCost
-4) compute profit = @calculateProfit(salesPrice, makingCost)
-5) add timestamp = @currentDate
-6) output ${namingStyle} keys
-
-Type @ to see available functions and variables`}
-                    />
-
-                    {showSuggestions && suggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-10 bg-background border border-border shadow-lg max-h-48 overflow-y-auto">
-                        {suggestions.map((suggestion, index) => (
-                          <button
-                            key={index}
-                            className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col cursor-pointer"
-                            onClick={() => insertSuggestion(suggestion)}
-                          >
-                            <span className="font-medium">@{suggestion.name}</span>
-                            <span className="text-sm text-muted-foreground">{suggestion.description}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <InstructionEditor
+                    mappingInstructions={mappingInstructions}
+                    setMappingInstructions={setMappingInstructions}
+                    availableVariables={availableVariables}
+                    namingStyle="camelCase"
+                    onMentionsChange={(mentions) => setSelectedMentions(mentions)}
+                  />
                   <p className="text-sm text-muted-foreground">
                     Describe transformations step-by-step. Use @ to reference functions and variables.
                   </p>
