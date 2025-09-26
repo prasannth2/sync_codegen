@@ -1,6 +1,6 @@
 import { Dynamic, DynamicRepository } from "@/lib/types/mapper";
 
-const BASE_URL = "https://cpt4x27j-4000.inc1.devtunnels.ms/api";
+const BASE_URL = process.env.API_BASE_URL;
 
 
 export const dynamicApiRepository: DynamicRepository = {
