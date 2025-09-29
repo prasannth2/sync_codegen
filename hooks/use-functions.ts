@@ -6,25 +6,25 @@ import { toast } from "sonner";
 import { Dynamic } from "@/lib/types/mapper";
 import { handleErrorWithToast } from "@/components/ui/shared-toast";
 
-interface UseFormatterOptions extends SWRConfiguration {
+interface UseFunctionOptions extends SWRConfiguration {
   enabled?: boolean;
   filters?: ("all" | "mine" | "shared" | "bookmarked")[];
   limit?: number;
 }
 
-export function useFormatter(
-  formatterId: string | null | undefined,
-  options: UseFormatterOptions = {},
+export function useFunction(
+  functionId: string | null | undefined,
+  options: UseFunctionOptions = {},
 ) {
   const { enabled = true, ...swrOptions } = options;
 
   const {
-    data: formatter,
+    data: myFunction,
     error,
     isLoading,
     mutate,
   } = useSWR<Dynamic>(
-    formatterId && enabled ? `/api/formatters/${formatterId}` : null,
+    functionId && enabled ? `/api/functions/${functionId}` : null,
     fetcher,
     {
       errorRetryCount: 0,
@@ -35,14 +35,14 @@ export function useFormatter(
   );
 
   return {
-    formatter,
+    myFunction,
     isLoading,
     error,
     mutate,
   };
 }
 
-export function useFormatters(options: UseFormatterOptions = {}) {
+export function useFunctions(options: UseFunctionOptions = {}) {
   const { filters = ["all"], limit = 50, ...swrOptions } = options;
 
   // Build query string with filters
@@ -53,11 +53,11 @@ export function useFormatters(options: UseFormatterOptions = {}) {
   });
 
   const {
-    data: formatters = [],
+    data: functions = [],
     error,
     isLoading,
     mutate,
-  } = useSWR<Dynamic[]>(`/api/formatters?${queryParams.toString()}`, fetcher, {
+  } = useSWR<Dynamic[]>(`/api/functions?${queryParams.toString()}`, fetcher, {
     errorRetryCount: 0,
     revalidateOnFocus: false,
     fallbackData: [],
@@ -65,8 +65,8 @@ export function useFormatters(options: UseFormatterOptions = {}) {
     ...swrOptions,
   });
 
-  const deleteFormatter = async (id: string) => {
-    const res = await fetch(`/api/formatters/${id}`, {
+  const deleteFunction = async (id: string) => {
+    const res = await fetch(`/api/functions/${id}`, {
       method: "DELETE",
     });
 
@@ -76,27 +76,27 @@ export function useFormatters(options: UseFormatterOptions = {}) {
   };
 
   return {
-    formatters,
+    functions,
     isLoading,
     error,
     mutate,
-    deleteFormatter,
+    deleteFunction,
   };
 }
 
-// Utility hook to invalidate all formatters caches
-export function useInvalidateFormatters() {
+// Utility hook to invalidate all functions caches
+export function useInvalidateFunctions() {
   const { mutate } = useSWRConfig();
 
   return () => {
-    // Invalidate all formatters list endpoints (with or without query strings)
-    // but not individual formatters details (/api/formatters/[id])
+    // Invalidate all functions list endpoints (with or without query strings)
+    // but not individual functions details (/api/functions/[id])
     mutate(
       (key) => {
         if (typeof key !== "string") return false;
-        // Match /api/formatters or /api/formatters?... but not /api/formatters/id
+        // Match /api/functions or /api/functions?... but not /api/functions/id
         return (
-          key.startsWith("/api/formatters") && !key.match(/\/api\/formatters\/[^/?]+/)
+          key.startsWith("/api/functions") && !key.match(/\/api\/functions\/[^/?]+/)
         );
       },
       undefined,

@@ -573,13 +573,13 @@ export function MapperSchemaGenerator() {
     const fetchFormatterAndSet = async () => {
       try {
         // 1. Get all formatters
-        const res = await fetch(`${API_BASE_URL}/api/formatters`);
-        if (!res.ok) throw new Error(`Formatter API error: ${res.status}`);
+        const res = await fetch(`${API_BASE_URL}/api/functions`);
+        if (!res.ok) throw new Error(`Functions API error: ${res.status}`);
         const { data } = await res.json();
 
         const formatter = data?.formatters?.find((f: any) => f.api_id === id);
         if (formatter) {
-          console.log('formatter', formatter)
+          console.log('functions', formatter)
           // Prefill transform details
           setTransformName(formatter.name || "");
           setTransformDescription(formatter.description || "");
@@ -761,7 +761,7 @@ export function MapperSchemaGenerator() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => router.push("/formatters")}
+                  onClick={() => router.push("/functions")}
                 >
                   Go to List
                 </Button>

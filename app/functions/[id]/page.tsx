@@ -1,7 +1,7 @@
 "use client";
 
-import { AddEditFormatter } from "@/components/add-edit-fromatter";
-import { useFormatter } from "@/hooks/use-formatters";
+import { AddEditFunctions } from "@/components/add-edit-functions";
+import { useFunction } from "@/hooks/use-functions";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -16,17 +16,17 @@ export default function ApisPage({
     return (
       <main className="min-h-screen bg-background py-8 px-4">
         <div className="mx-auto">
-          <Suspense fallback={<div>Loading Formatter...</div>}>
-            <AddEditFormatter />
+          <Suspense fallback={<div>Loading Functions...</div>}>
+            <AddEditFunctions />
           </Suspense>
         </div>
       </main>
     );
   }
 
-  const { formatter, isLoading } = useFormatter(id);
+  const { myFunction, isLoading } = useFunction(id);
 
-  if (!isLoading && !formatter) {
+  if (!isLoading && !myFunction) {
     notFound();
   }
 
@@ -37,8 +37,8 @@ export default function ApisPage({
   return (
     <main className="min-h-screen bg-background py-8 px-4">
       <div className="mx-auto">
-        <Suspense fallback={<div>Loading Formatter...</div>}>
-          <AddEditFormatter initialFormatter={formatter?.data} />
+        <Suspense fallback={<div>Loading Functions...</div>}>
+          <AddEditFunctions initialFormatter={myFunction?.data} />
         </Suspense>
       </div>
     </main>

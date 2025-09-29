@@ -11,7 +11,7 @@ import { Loader } from "@/components/ui/Loader"   // ✅ Import loader component
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
-interface Formatter {
+interface Function {
   api_id: string
   name: string
   key: string
@@ -19,8 +19,8 @@ interface Formatter {
   formatter_id?: string
 }
 
-export function FormatterList() {
-  const [formatters, setFormatters] = useState<Formatter[]>([])
+export function FunctionsList() {
+  const [formatters, setFormatters] = useState<Function[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
@@ -29,7 +29,7 @@ export function FormatterList() {
     const fetchFormatters = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`${API_BASE_URL}/api/formatters`)
+        const res = await fetch(`${API_BASE_URL}/api/functions`)
         if (!res.ok) throw new Error(`API error: ${res.status}`)
         const { data } = await res.json()
         setFormatters(data?.formatters || [])
@@ -67,19 +67,19 @@ export function FormatterList() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Formatters</h1>
-          <p className="text-muted-foreground">Manage your data formatters and transformations</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Functions</h1>
+          <p className="text-muted-foreground">Manage your data functions and transformations</p>
         </div>
-        <Button onClick={() => router.push("/formatters/new")} className="flex items-center gap-2">
+        <Button onClick={() => router.push("/functions/new")} className="cursor-pointer flex items-center gap-2">
           <Plus className="h-4 w-4" />
-          New Formatter
+          New Function
         </Button>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search formatters..."
+          placeholder="Search functions..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -92,17 +92,17 @@ export function FormatterList() {
             <Search className="h-6 w-6 text-muted-foreground" />
           </div>
           <h3 className="mt-4 text-lg font-semibold">
-            {searchQuery ? "No formatters found" : "No formatters available"}
+            {searchQuery ? "No functions found" : "No functions available"}
           </h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
             {searchQuery
-              ? "Try adjusting your search terms or clear the search to see all formatters."
-              : "Get started by creating your first formatter."}
+              ? "Try adjusting your search terms or clear the search to see all functions."
+              : "Get started by creating your first functions."}
           </p>
           {!searchQuery && (
-            <Button onClick={() => router.push("/formatters")}>
+            <Button onClick={() => router.push("/functions/new")} className="cursor-pointer">
               <Plus className="mr-2 h-4 w-4" />
-              Create Formatter
+              Create Function
             </Button>
           )}
         </div>
@@ -122,7 +122,7 @@ export function FormatterList() {
                 <TableRow
                   key={fmt.formatter_id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/formatters/${fmt.api_id}`)}
+                  onClick={() => router.push(`/functions/${fmt.api_id}`)}
                 >
                   <TableCell className="font-medium">{fmt.name}</TableCell>
                   <TableCell className="font-mono text-sm">{fmt.key}</TableCell>
@@ -134,7 +134,7 @@ export function FormatterList() {
                       onClick={(e) => {
                         e.stopPropagation()
                         e.preventDefault()
-                        router.push(`/formatters/${fmt.formatter_id}`)
+                        router.push(`/functions/${fmt.formatter_id}`)
                       }}
                     >
                       Open

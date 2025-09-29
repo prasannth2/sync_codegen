@@ -96,7 +96,7 @@ function toFormatterKey(formatterName: string): string {
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL as string) ?? ""
 
-interface EditFormatterProps {
+interface EditFunctionsProps {
   initialFormatter?: Dynamic;
 }
 
@@ -106,7 +106,7 @@ type ArtifactsIds = {
   mongoose_model?: string | null
 }
 
-export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
+export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
   const router = useRouter()
   const previewCtrlRef = useRef<AbortController | null>(null);
   useEffect(() => () => previewCtrlRef.current?.abort(), []);
@@ -152,7 +152,29 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     { name: string; artifact_id: string; content: string }[]
   >([])
 
-  const [artifactIds, setArtifactIds] = useState<ArtifactsIds | null>(null)
+  const [artifactIds, setArtifactIds] = useState<ArtifactsIds | null>(null);
+
+  // Silent nav (no toast). Keeps your existing proceedToMainInterface for manual use elsewhere.
+  const goMainSilently = () => {
+    setShowConfiguration(false);
+    setShowMainInterface(true);
+  };
+
+  // Auto-fill name from API (if empty) and go main as soon as API is chosen.
+  useEffect(() => {
+    if (!showConfiguration) return;
+
+    // If API selected and transformName is empty, derive from selected API
+    if (selectedAPI && !transformName.trim() && selectedAPIData?.name) {
+      setTransformName(selectedAPIData.name);
+    }
+
+    // If API chosen and we now have (a) a name or (b) can derive one, go main
+    if (selectedAPI && (transformName.trim() || selectedAPIData?.name)) {
+      goMainSilently();
+    }
+  }, [selectedAPI, selectedAPIData, transformName, showConfiguration]);
+
 
   // Helpers
   const api = (path: string) => `${API_BASE_URL}${path}`
@@ -199,25 +221,10 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
     }
   }
 
-  const proceedToMainInterface = () => {
-    if (!transformName.trim() || !selectedAPI) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in name and select an API before proceeding.",
-        variant: "destructive",
-      })
-      return
-    }
-    setShowConfiguration(false)
-    setShowMainInterface(true)
-  }
-
-  const skipAPIFields = () => proceedToMainInterface()
-
   const backToConfiguration = () => {
     // In edit mode, go back to list instead of config screen
     if (initialFormatter) {
-      router.push("/formatters")
+      router.push("/functions")
       return
     }
     setShowConfiguration(true)
@@ -586,7 +593,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
             <>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="transform-name">Transform Name *</Label>
+                  <Label htmlFor="transform-name">Function Name *</Label>
                   <Input
                     id="transform-name"
                     placeholder="e.g., Sales Data Transform"
@@ -617,16 +624,6 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                 </div>
               </div>
 
-              {/* API Fields Configuration flow removed */}
-              <div className="flex justify-center gap-4 mt-4">
-                <Button variant="outline" onClick={skipAPIFields} className="cursor-pointer">
-                  Skip Configuration
-                </Button>
-                <Button onClick={proceedToMainInterface} className="bg-primary hover:bg-primary/90 cursor-pointer">
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  Proceed to Transform
-                </Button>
-              </div>
             </>
           )}
 
@@ -645,7 +642,7 @@ export function AddEditFormatter({ initialFormatter }: EditFormatterProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => router.push("/formatters")}
+                  onClick={() => router.push("/functions")}
                   className="cursor-pointer"
                 >
                   Go to List
