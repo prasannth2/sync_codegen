@@ -224,7 +224,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
   const backToConfiguration = () => {
     // In edit mode, go back to list instead of config screen
     if (initialFormatter) {
-      router.push("/functions")
+      router.back();
       return
     }
     setShowConfiguration(true)
@@ -647,10 +647,10 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                 >
                   Go to List
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleReset} className="cursor-pointer">
+                {!initialFormatter && <Button variant="outline" size="sm" onClick={handleReset} className="cursor-pointer">
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset All
-                </Button>
+                </Button>}
               </div>
             </div>
           )}

@@ -122,11 +122,11 @@ export function FunctionsList() {
                 <TableRow
                   key={fmt.formatter_id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/functions/${fmt.api_id}`)}
+                  onClick={() => router.push(`/functions/${fmt.formatter_id}`)}
                 >
                   <TableCell className="font-medium">{fmt.name}</TableCell>
                   <TableCell className="font-mono text-sm">{fmt.key}</TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">{fmt.api_id}</TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">{fmt.formatter_id}</TableCell>
                   <TableCell>
                     <Button
                       size="sm"
