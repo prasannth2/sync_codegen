@@ -573,7 +573,7 @@ export function MapperSchemaGenerator() {
     const fetchFormatterAndSet = async () => {
       try {
         // 1. Get all formatters
-        const res = await fetch(`${API_BASE_URL}/api/functions`);
+        const res = await fetch(`${API_BASE_URL}/api/formatters`);
         if (!res.ok) throw new Error(`Functions API error: ${res.status}`);
         const { data } = await res.json();
 

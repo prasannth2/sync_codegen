@@ -29,7 +29,7 @@ export function FunctionsList() {
     const fetchFormatters = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`${API_BASE_URL}/api/functions`)
+        const res = await fetch(`${API_BASE_URL}/api/formatters`)
         if (!res.ok) throw new Error(`API error: ${res.status}`)
         const { data } = await res.json()
         setFormatters(data?.formatters || [])

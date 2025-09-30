@@ -434,7 +434,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
 
   // ---- Test ----
   const handleTestFunction = async () => {
-    if (!(artifactIds?.mapper_code && artifactIds?.mongoose_model)) {
+    if (!(artifactIds?.mapper_code /* && artifactIds?.mongoose_model */)) {
       toast({
         title: "Artifacts not ready",
         description: "Test is enabled only after mapper_code and mongoose_model are generated.",
@@ -578,7 +578,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
     setShowMainInterface(true)
   }, [initialFormatter])
 
-  const canShowTest = Boolean(artifactIds?.mapper_code && artifactIds?.mongoose_model)
+  const canShowTest = Boolean(artifactIds?.mapper_code /* && artifactIds?.mongoose_model */)
 
   return (
     <div className="w-full h-screen flex flex-col">
