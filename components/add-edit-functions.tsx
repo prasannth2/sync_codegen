@@ -42,7 +42,7 @@ import { APP_NAME, INPUT_SAMPLE_NAME, OUTPUT_SAMPLE_NAME } from "@/config/app"
 import { Dynamic } from "@/lib/types/mapper"
 import { useRouter } from "next/navigation"
 import { ArtifactCodeViewer, ArtifactResponse, inferArtifactType } from "./artifacts/artifact-code-viewer"
-import { InstructionEditor } from "./instructions-editor"
+import InstructionEditor, { Mention } from "./instructions-editor"
 
 interface GeneratedFunction {
   code: string
@@ -122,7 +122,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
 
   const [sampleResponse, setSampleResponse] = useState("")
   const [mappingInstructions, setMappingInstructions] = useState("")
-  const [selectedMentions, setSelectedMentions] = useState<{ id: string; name: string }[]>([])
+  const [selectedMentions, setSelectedMentions] = useState<Mention[]>([])
   const [mappedOutput, setMappedOutput] = useState("")
   const [namingStyle, setNamingStyle] = useState("snake_case")
   const [requiredFields, setRequiredFields] = useState("")
@@ -364,8 +364,12 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
           inputsample: inputSample,
           outputsample: outputSample,
           instructions: mappingInstructions,
-          preferences: { naming: namingStyle, strict_schema: true },
-          models: selectedMentions,
+          preferences: selectedMentions.map(m => {
+            return {
+              mention_type: m.mention_type,
+              ...m.data
+            }
+          }),
         }),
       })
 
@@ -469,7 +473,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
         }),
       })
       if (!response.ok) throw new Error(`API error: ${response.status}`)
-      const data = await response.json()
+      const { data } = await response.json()
       setTestOutput(JSON.stringify(data?.mapped_output, null, 2))
       toast({ title: "✅ Test successful", description: "Function executed successfully with sample data." })
     } catch (error) {
@@ -883,10 +887,14 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                   </Label>
                   <InstructionEditor
                     mappingInstructions={mappingInstructions}
-                    setMappingInstructions={setMappingInstructions}
+                    setMappingInstructions={(inst) => {
+                      setMappingInstructions(inst);
+                    }}
                     availableVariables={availableVariables}
                     namingStyle="camelCase"
-                    onMentionsChange={(mentions) => setSelectedMentions(mentions)}
+                    onMentionsChange={(mentions) => {
+                      setSelectedMentions(mentions);
+                    }}
                   />
                   <p className="text-sm text-muted-foreground">
                     Describe transformations step-by-step. Use @ to reference functions and variables.
