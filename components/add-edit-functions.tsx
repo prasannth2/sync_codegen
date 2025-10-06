@@ -43,6 +43,7 @@ import { Dynamic } from "@/lib/types/mapper"
 import { useRouter } from "next/navigation"
 import { ArtifactCodeViewer, ArtifactResponse, inferArtifactType } from "./artifacts/artifact-code-viewer"
 import InstructionEditor, { Mention } from "./instructions-editor"
+import FilesViewerDialog from "./file-viewer-dialog"
 
 interface GeneratedFunction {
   code: string
@@ -265,6 +266,12 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
     }
   }
 
+  const handleSampleOutputBlur = () => {
+    if (mappedOutput && validateJSON(mappedOutput)) {
+      setMappedOutput(beautifyJSON(mappedOutput))
+    }
+  }
+
   // ---- Preview (explicit button) ----
   const previewMappedOutput = async () => {
     if (!sampleResponse || !mappingInstructions || !sampleResponseValid) {
@@ -470,6 +477,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
           sample_request: parsed,
           formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id,
           options: { validate_schema: true, run_model_shape_check: false },
+          artifact_id: artifactIds?.mapper_code
         }),
       })
       if (!response.ok) throw new Error(`API error: ${response.status}`)
@@ -937,10 +945,27 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                   <div className="h-full">
                     <div className="space-y-2 h-full flex flex-col">
                       <Label className="text-base font-semibold">Transformed JSON</Label>
-                      <Textarea
+                      {/* <Textarea
                         value={mappedOutput}
                         readOnly
                         className="font-mono text-sm resize-none overflow-auto w-full flex-1 min-h-0"
+                      /> */}
+                      <Textarea
+                        id="sample-response"
+                        placeholder={
+                          "Sample output"
+                        }
+                        value={mappedOutput}
+                        onChange={(e) => setMappedOutput(e.target.value)}
+                        onBlur={handleSampleOutputBlur}
+                        spellCheck={false}
+                        className={`font-mono text-sm resize-none overflow-auto w-full
+                      min-h-[300px] max-h-[calc(100vh-320px)]
+                      ${mappedOutputValid === false
+                            ? "border-red-500 focus:border-red-500"
+                            : mappedOutputValid === true
+                              ? "border-green-500"
+                              : ""}`}
                       />
                       <div className="flex items-center justify-between text-sm">
                         <p className="text-muted-foreground">Transformation preview</p>
@@ -991,7 +1016,24 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
       </AlertDialog>
 
       {/* Generated artifacts / files viewer */}
-      <Dialog open={showFunctionPopup} onOpenChange={setShowFunctionPopup}>
+      <FilesViewerDialog
+        open={showFunctionPopup}
+        onOpenChange={setShowFunctionPopup}
+        files={artifactFiles}
+        formatterId={schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id || ""}
+        apiId={selectedAPIData?.id || ""}
+        inferArtifactType={inferArtifactType}
+        onSave={async ({ artifactId, fileName, content, formatterId, apiId }) => {
+          const res = await fetch(api(`/api/artifacts/${artifactId}/content`), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ artifactId, fileName, content, formatterId, apiId }),
+          });
+          if (!res.ok) throw new Error(`Save failed (${res.status})`);
+          return { ok: true, message: "Saved successfully" };
+        }}
+      />
+      {/* <Dialog open={showFunctionPopup} onOpenChange={setShowFunctionPopup}>
         <DialogContent
           className="
             w-[95vw] sm:max-w-[95vw] md:max-w-[92vw] lg:max-w-[1200px]
@@ -1034,7 +1076,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
       {/* Test modal */}
       <Dialog open={showTestPopup} onOpenChange={setShowTestPopup}>

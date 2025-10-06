@@ -257,8 +257,8 @@ export default function InstructionEditor({
       })) ?? [];
 
     return [
-      /* { key: "api", title: "APIs", items: apis },
-      { key: "function", title: "Functions", items: funcs }, */
+      { key: "api", title: "APIs", items: apis },
+      /* { key: "function", title: "Functions", items: funcs }, */
       { key: "model", title: "Models", items: models },
     ];
   }, [data]);

@@ -49,6 +49,8 @@ export interface ArtifactCodeViewerProps {
   filenameHint?: string; // fallback filename for downloads
   // When you want to allow changing language manually (rare)
   allowLanguageSwitch?: boolean;
+  readOnly?: boolean; // default true, if false and monaco available, allow editing
+  onChange?: (val: string) => void;
 }
 
 /**
@@ -66,6 +68,8 @@ export function ArtifactCodeViewer({
   language,
   filenameHint,
   allowLanguageSwitch = false,
+  readOnly = true,
+  onChange, 
 }: ArtifactCodeViewerProps) {
   const [wrap, setWrap] = useState(false);
   const [lang, setLang] = useState<Language>(language ?? guessLanguage(artifact));
@@ -190,8 +194,9 @@ export function ArtifactCodeViewer({
             height="100%"
             defaultLanguage={lang === "json" ? "json" : lang === "typescript" ? "typescript" : "javascript"}
             value={code}
+            onChange={(v: string) => onChange?.(v ?? "")}  
             options={{
-              readOnly: true,
+              readOnly: readOnly,
               minimap: { enabled: false },
               wordWrap: wrap ? "on" : "off",
               lineNumbers: "on",
