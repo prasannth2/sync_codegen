@@ -1,6 +1,8 @@
+// components/app-sidebar.tsx
 "use client"
 
 import {
+    Sidebar,
     SidebarContent,
     SidebarFooter,
     SidebarGroup,
@@ -10,7 +12,9 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarRail,
     SidebarSeparator,
+    SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { Building2, Database, FileCode2, ListTree, ScrollText } from "lucide-react"
@@ -19,26 +23,26 @@ import { usePathname } from "next/navigation"
 
 export function AppSidebar() {
     const pathname = usePathname()
-
     const isActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`)
 
     return (
-        <>
+        <Sidebar collapsible="icon">{/* <-- IMPORTANT root wrapper */}
             <SidebarHeader className="px-3 py-2">
                 <div className="flex items-center gap-2 px-1">
+                    <SidebarTrigger className="-ml-1 mr-1 h-8 w-8" />
                     <FileCode2 className="h-5 w-5" />
                     <span className="text-sm font-semibold">Mapper Console</span>
                 </div>
             </SidebarHeader>
 
-            <SidebarContent>
+            <SidebarContent className="overflow-x-hidden">
                 <SidebarGroup>
                     <SidebarGroupLabel>Navigation</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <Link href="/organization/settings" className="block">
-                                    <SidebarMenuButton isActive={isActive("/organization/settings")} tooltip="Organization Settings">
+                                <Link href="/admin/organization/settings" className="block">
+                                    <SidebarMenuButton isActive={isActive("/admin/organization/settings")} className="cursor-pointer">
                                         <Building2 />
                                         <span>Organization Settings</span>
                                     </SidebarMenuButton>
@@ -47,7 +51,7 @@ export function AppSidebar() {
 
                             <SidebarMenuItem>
                                 <Link href="/functions" className="block">
-                                    <SidebarMenuButton isActive={isActive("/functions")} tooltip="Functions">
+                                    <SidebarMenuButton isActive={isActive("/functions")} className="cursor-pointer">
                                         <ListTree />
                                         <span>Functions</span>
                                     </SidebarMenuButton>
@@ -56,7 +60,7 @@ export function AppSidebar() {
 
                             <SidebarMenuItem>
                                 <Link href="/admin/listcollection" className="block">
-                                    <SidebarMenuButton isActive={isActive("/admin/listcollection")} tooltip="Database">
+                                    <SidebarMenuButton isActive={isActive("/admin/listcollection")} className="cursor-pointer">
                                         <Database />
                                         <span>Database</span>
                                     </SidebarMenuButton>
@@ -65,7 +69,7 @@ export function AppSidebar() {
 
                             <SidebarMenuItem>
                                 <Link href="/logs" className="block">
-                                    <SidebarMenuButton isActive={isActive("/logs")} tooltip="Logs">
+                                    <SidebarMenuButton isActive={isActive("/logs")} className="cursor-pointer">
                                         <ScrollText />
                                         <span>Logs</span>
                                     </SidebarMenuButton>
@@ -80,7 +84,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Help</SidebarGroupLabel>
                     <SidebarGroupContent className="px-2 text-xs text-muted-foreground">
-                        <p className="leading-5">Use Ctrl/Cmd + B to toggle the sidebar.</p>
+                        <p>Click the menu icon or use Ctrl/Cmd + B to toggle the sidebar.</p>
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
@@ -88,6 +92,9 @@ export function AppSidebar() {
             <SidebarFooter className="px-3 py-2">
                 <div className={cn("text-xs text-muted-foreground px-1")}>v0 App • Console</div>
             </SidebarFooter>
-        </>
+
+            {/* IMPORTANT: use SidebarRail with NO children */}
+            <SidebarRail />
+        </Sidebar>
     )
 }
