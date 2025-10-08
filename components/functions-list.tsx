@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Loader } from "@/components/ui/Loader"
 import { toast } from "@/hooks/use-toast"
-import { CalendarPlus, Clock7, Pencil, Play, Plus, Search, Square, Star, User2, Users } from "lucide-react"
+import { CalendarPlus, Clock7, Pencil, Play, Plus, Search, Settings2, Square } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
@@ -20,11 +20,24 @@ interface FunctionItem {
   description?: string
   formatter_id?: string
   schedule_id?: string | null
-  schedule_status?: "running" | "stopped" | "scheduled" | "idle"
+  schedule_status?: CanonicalScheduleStatus
   owner?: string
   users_count?: number
   stars?: number
 }
+
+
+type CanonicalScheduleStatus = "running" | "scheduled" | "idle"
+
+function normalizeStatus(raw: string | undefined, hasId: boolean): CanonicalScheduleStatus {
+  const v = (raw || "").toLowerCase()
+  if (["enabled", "running", "active", "on"].includes(v)) return "running"
+  if (["disabled", "stopped", "off"].includes(v)) return "idle"
+  if (["scheduled", "pending"].includes(v)) return "scheduled"
+  // fallback: if it has a schedule_id but no clear status, treat as scheduled
+  return hasId ? "scheduled" : "idle"
+}
+
 
 export function FunctionsList() {
   const [formatters, setFormatters] = useState<FunctionItem[]>([])
@@ -42,14 +55,18 @@ export function FunctionsList() {
       const res = await fetch(`${API_BASE_URL}/api/formatters`)
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const { data } = await res.json()
-      const items = (data?.formatters || []).map((x: any) => ({
-        ...x,
-        schedule_id: x.schedule_id ?? null,
-        schedule_status: x.schedule_status ?? (x.schedule_id ? "scheduled" : "idle"),
-        owner: x.owner ?? "unknown",
-        users_count: x.users_count ?? 1,
-        stars: x.stars ?? 0,
-      }))
+      const items = (data?.formatters || []).map((x: any) => {
+        const hasId = !!x.schedule_id
+        return {
+          ...x,
+          schedule_id: x.schedule_id ?? null,
+          schedule_status: normalizeStatus(x.schedule_status, hasId),
+          owner: x.owner ?? "unknown",
+          users_count: x.users_count ?? 1,
+          stars: x.stars ?? 0,
+        } as FunctionItem
+      })
+
       setFormatters(items)
     } catch (error) {
       console.error("Failed to fetch formatters:", error)
@@ -205,9 +222,23 @@ export function FunctionsList() {
             const showStart = !!item.schedule_id && item.schedule_status !== "running"
             const showStop = !!item.schedule_id && item.schedule_status === "running"
             return (
-              <Card key={item.formatter_id ?? item.api_id} className="overflow-hidden">
+              <Card
+                key={item.formatter_id ?? item.api_id}
+                className="relative overflow-visible p-2"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2
+               !h-6 !w-6 !p-0 rounded-full z-10 cursor-pointer"
+                  onClick={() => openEditSchedule(item)}
+                  title="Edit"
+                >
+                  <Pencil className="h-3 w-3 -rotate-90" strokeWidth={1.75} />
+                </Button>
+
                 <div className="flex">
-                  <div className="flex-1 p-4">
+                  <div className="flex-1 p-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded border text-xs">
@@ -218,19 +249,8 @@ export function FunctionsList() {
                           <div className="text-xs text-muted-foreground font-mono">{item.key}</div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          className="cursor-pointer"
-                          onClick={() => router.push(`/functions/${item.formatter_id}`)}
-                        >
-                          Use
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Star className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
+
 
                     <CardContent className="p-0 mt-3">
                       <p className="text-sm text-muted-foreground line-clamp-2">
@@ -242,7 +262,7 @@ export function FunctionsList() {
                         {statusBadge(item.schedule_status)}
                       </div>
 
-                      <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                      {/* <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
                           <User2 className="h-4 w-4" />
                           {item.owner ?? "owner"}
@@ -255,7 +275,7 @@ export function FunctionsList() {
                           <Star className="h-4 w-4" />
                           {item.stars ?? 0}
                         </span>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </div>
 
@@ -265,7 +285,7 @@ export function FunctionsList() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-8 w-8 cursor-pointer"
                         onClick={() => openCreateSchedule(item)}
                         title="Create schedule"
                       >
@@ -277,7 +297,7 @@ export function FunctionsList() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 cursor-pointer"
                             onClick={() => startSchedule(item)}
                             title="Start"
                           >
@@ -288,7 +308,7 @@ export function FunctionsList() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 cursor-pointer"
                             onClick={() => stopSchedule(item)}
                             title="Stop"
                           >
@@ -298,11 +318,11 @@ export function FunctionsList() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 cursor-pointer"
                           onClick={() => openEditSchedule(item)}
                           title="Edit schedule"
                         >
-                          <Pencil className="h-4 w-4 text-foreground" />
+                          <Settings2 className="h-4 w-4 text-foreground" />
                         </Button>
                       </>
                     )}

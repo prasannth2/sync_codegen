@@ -1,38 +1,23 @@
-// components/app-sidebar.tsx
-"use client"
-
+// components/sidebar/app-sidebar-nav.tsx
 import {
-    Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarGroup,
     SidebarGroupContent,
     SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
-    SidebarMenuButton,
     SidebarMenuItem,
-    SidebarRail,
-    SidebarSeparator,
-    SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
-import { Building2, Database, FileCode2, ListTree, ScrollText } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+    SidebarSeparator
+} from "@/components/ui/sidebar";
+import { Building2, Database, ListTree, ScrollText } from "lucide-react";
+import Link from "next/link";
+import { ClientActiveButton } from "./client-active-button"; // tiny client leaf
 
-export function AppSidebar() {
-    const pathname = usePathname()
-    const isActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`)
-
+export function AppSidebarNav() {
     return (
-        <Sidebar collapsible="icon">{/* <-- IMPORTANT root wrapper */}
+        <>
             <SidebarHeader className="px-3 py-2">
-                <div className="flex items-center gap-2 px-1">
-                    <SidebarTrigger className="-ml-1 mr-1 h-8 w-8" />
-                    <FileCode2 className="h-5 w-5" />
-                    <span className="text-sm font-semibold">Mapper Console</span>
-                </div>
+                {/* You can put a static logo here; no hooks */}
             </SidebarHeader>
 
             <SidebarContent className="overflow-x-hidden">
@@ -42,37 +27,37 @@ export function AppSidebar() {
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <Link href="/admin/organization/settings" className="block">
-                                    <SidebarMenuButton isActive={isActive("/admin/organization/settings")} className="cursor-pointer">
+                                    <ClientActiveButton href="/admin/organization/settings" tooltip="Organization Settings">
                                         <Building2 />
                                         <span>Organization Settings</span>
-                                    </SidebarMenuButton>
+                                    </ClientActiveButton>
                                 </Link>
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
                                 <Link href="/functions" className="block">
-                                    <SidebarMenuButton isActive={isActive("/functions")} className="cursor-pointer">
+                                    <ClientActiveButton href="/functions" tooltip="Functions">
                                         <ListTree />
                                         <span>Functions</span>
-                                    </SidebarMenuButton>
+                                    </ClientActiveButton>
                                 </Link>
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
                                 <Link href="/admin/listcollection" className="block">
-                                    <SidebarMenuButton isActive={isActive("/admin/listcollection")} className="cursor-pointer">
+                                    <ClientActiveButton href="/admin/listcollection" tooltip="Database">
                                         <Database />
                                         <span>Database</span>
-                                    </SidebarMenuButton>
+                                    </ClientActiveButton>
                                 </Link>
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
                                 <Link href="/logs" className="block">
-                                    <SidebarMenuButton isActive={isActive("/logs")} className="cursor-pointer">
+                                    <ClientActiveButton href="/logs" tooltip="Logs">
                                         <ScrollText />
                                         <span>Logs</span>
-                                    </SidebarMenuButton>
+                                    </ClientActiveButton>
                                 </Link>
                             </SidebarMenuItem>
                         </SidebarMenu>
@@ -89,12 +74,9 @@ export function AppSidebar() {
                 </SidebarGroup> */}
             </SidebarContent>
 
-            <SidebarFooter className="px-3 py-2">
+            {/* <SidebarFooter className="px-3 py-2">
                 <div className={cn("text-xs text-muted-foreground px-1")}>v0 App • Console</div>
-            </SidebarFooter>
-
-            {/* IMPORTANT: use SidebarRail with NO children */}
-            <SidebarRail />
-        </Sidebar>
+            </SidebarFooter> */}
+        </>
     )
 }
