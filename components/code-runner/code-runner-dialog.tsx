@@ -320,7 +320,7 @@ export function CodeRunnerDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-[96vw] sm:max-w-[96vw] lg:max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1800px] h-[88vh] p-0 overflow-hidden">
                 {/* Sticky header */}
-                <div className="px-5 pt-5 pb-3 bg-background/80 backdrop-blur sticky top-0 z-20">
+                <div className="px-5 pt-5 pb-0 bg-background/80 backdrop-blur sticky top-0 z-20">
                     <DialogHeader className="flex flex-row items-center justify-between p-0">
                         <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
                             <FileCode2 className="w-5 h-5" />
@@ -351,12 +351,12 @@ export function CodeRunnerDialog({
                     ) : null}
                 </div>
 
-                <Separator />
+                {/* <Separator /> */}
 
                 {/* Optional stdin drawer */}
                 {stdinOpen && (
                     <>
-                        <div className="px-5 py-3">
+                        <div className="px-5 py-1">
                             <div className="mb-2 text-sm font-medium">Run Input (stdin / sample JSON)</div>
                             <textarea
                                 value={stdin}
@@ -370,7 +370,7 @@ export function CodeRunnerDialog({
                 )}
 
                 {/* Main: unified frame with perfect alignment */}
-                <div className="flex-1 h-[calc(88vh-150px)] px-5 py-4">
+                <div className="flex-1 h-[calc(88vh-150px)] px-5 py-1">
                     <div className="h-full overflow-hidden rounded-xl border">
                         <ResizablePanelGroup direction="horizontal" className="h-full">
                             {/* LEFT — Editor */}
@@ -423,7 +423,7 @@ export function CodeRunnerDialog({
                                     </div>
 
                                     {/* Editor */}
-                                    <div className="flex-1 min-h-0">
+                                    <div className="flex-1 min-h-0 mt-1">
                                         {current ? (
                                             <ArtifactCodeViewer
                                                 artifact={{

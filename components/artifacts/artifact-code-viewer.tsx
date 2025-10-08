@@ -69,7 +69,7 @@ export function ArtifactCodeViewer({
   filenameHint,
   allowLanguageSwitch = false,
   readOnly = true,
-  onChange, 
+  onChange,
 }: ArtifactCodeViewerProps) {
   const [wrap, setWrap] = useState(false);
   const [lang, setLang] = useState<Language>(language ?? guessLanguage(artifact));
@@ -140,9 +140,9 @@ export function ArtifactCodeViewer({
   };
 
   return (
-    <div className="w-full h-full flex flex-col border border-border rounded-md overflow-hidden">
+    <div className="w-full h-full flex flex-col rounded-md overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 p-3 border-b border-border bg-muted/30">
+      {/* <div className="flex items-center justify-between gap-3 p-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2 min-w-0">
           <FileCode2 className="w-4 h-4 shrink-0" />
           <div className="truncate">
@@ -185,24 +185,43 @@ export function ArtifactCodeViewer({
             Download
           </Button>
         </div>
-      </div>
+      </div> */}
 
       {/* Editor area */}
       <div ref={containerRef} className="flex-1 min-h-[300px]">
         {useMonaco && MonacoEditor ? (
-          <MonacoEditor
-            height="100%"
-            defaultLanguage={lang === "json" ? "json" : lang === "typescript" ? "typescript" : "javascript"}
-            value={code}
-            onChange={(v: string) => onChange?.(v ?? "")}  
-            options={{
-              readOnly: readOnly,
-              minimap: { enabled: false },
-              wordWrap: wrap ? "on" : "off",
-              lineNumbers: "on",
-              scrollBeyondLastLine: false,
-            }}
-          />
+          <div className="relative w-full h-full">
+            <MonacoEditor
+              height="100%"
+              defaultLanguage={lang === "json" ? "json" : lang === "typescript" ? "typescript" : "javascript"}
+              value={code}
+              onChange={(v: string) => onChange?.(v ?? "")}
+              options={{
+                readOnly: readOnly,
+                minimap: { enabled: false },
+                wordWrap: wrap ? "on" : "off",
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+              }}
+            />
+            {/* Overlay when readOnly to capture clicks for copy/download */}
+            <div
+              className="absolute top-0 right-0 z-10 flex flex-wrap gap-1"
+              style={{ cursor: readOnly ? "default" : "text" }}
+            >
+              <Button variant="outline" size="icon" onClick={() => setWrap((w) => !w)} title="Toggle wrap">
+                {wrap ? <WrapText className="w-4 h-4" /> : <WrapText className="w-4 h-4" />}
+              </Button>
+
+              <Button variant="outline" size="icon" onClick={handleCopy} title="Copy">
+                <Copy className="w-4 h-4" />
+              </Button>
+
+              <Button variant="outline" size="icon" onClick={handleDownload} title="Download">
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         ) : (
           <PlainCodeViewer code={code} wrap={wrap} />
         )}
