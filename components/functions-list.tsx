@@ -1,66 +1,163 @@
 "use client"
 
+import ScheduleDialog from "@/components/schedules/schedule-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Loader } from "@/components/ui/Loader"
 import { toast } from "@/hooks/use-toast"
-import { Plus, Search } from "lucide-react"
+import { CalendarPlus, Clock7, Pencil, Play, Plus, Search, Square, Star, User2, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
-import { Loader } from "@/components/ui/Loader"   // ✅ Import loader component
+import { useCallback, useEffect, useMemo, useState } from "react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string
 
-interface Function {
+interface FunctionItem {
   api_id: string
   name: string
   key: string
   description?: string
   formatter_id?: string
+  schedule_id?: string | null
+  schedule_status?: "running" | "stopped" | "scheduled" | "idle"
+  owner?: string
+  users_count?: number
+  stars?: number
 }
 
 export function FunctionsList() {
-  const [formatters, setFormatters] = useState<Function[]>([])
+  const [formatters, setFormatters] = useState<FunctionItem[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create")
+  const [currentItem, setCurrentItem] = useState<FunctionItem | null>(null)
 
-  useEffect(() => {
-    const fetchFormatters = async () => {
-      setLoading(true)
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/formatters`)
-        if (!res.ok) throw new Error(`API error: ${res.status}`)
-        const { data } = await res.json()
-        setFormatters(data?.formatters || [])
-      } catch (error) {
-        console.error("Failed to fetch formatters:", error)
-        toast({
-          title: "Error",
-          description: "Could not load available formatters.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+
+  const fetchFormatters = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/formatters`)
+      if (!res.ok) throw new Error(`API error: ${res.status}`)
+      const { data } = await res.json()
+      const items = (data?.formatters || []).map((x: any) => ({
+        ...x,
+        schedule_id: x.schedule_id ?? null,
+        schedule_status: x.schedule_status ?? (x.schedule_id ? "scheduled" : "idle"),
+        owner: x.owner ?? "unknown",
+        users_count: x.users_count ?? 1,
+        stars: x.stars ?? 0,
+      }))
+      setFormatters(items)
+    } catch (error) {
+      console.error("Failed to fetch formatters:", error)
+      toast({
+        title: "Error",
+        description: "Could not load available functions.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
-
-    fetchFormatters()
   }, [])
 
-  const filteredFormatters = useMemo(() => {
-    if (!searchQuery) return formatters
 
+  useEffect(() => {
+    fetchFormatters()
+  }, [fetchFormatters])
+
+
+  const filtered = useMemo(() => {
+    if (!searchQuery) return formatters
+    const q = searchQuery.toLowerCase()
     return formatters.filter(
-      (formatter) =>
-        formatter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        formatter.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        formatter.api_id.toLowerCase().includes(searchQuery.toLowerCase()),
+      (f) =>
+        f.name?.toLowerCase().includes(q) || f.key?.toLowerCase().includes(q) || f.api_id?.toLowerCase().includes(q),
     )
   }, [formatters, searchQuery])
 
+  const startSchedule = async (item: FunctionItem) => {
+    if (!item.formatter_id || !item.schedule_id) return
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/schedules/${item.schedule_id}/enable`,
+        { method: "POST" },
+      )
+
+
+      if (!res.ok) throw new Error("Failed to start schedule")
+      toast({ title: "Schedule started" })
+      setFormatters((prev) =>
+        prev.map((f) => (f.formatter_id === item.formatter_id ? { ...f, schedule_status: "running" } : f)),
+      )
+    } catch {
+      toast({ title: "Failed to start", variant: "destructive" })
+    }
+  }
+
+  const stopSchedule = async (item: FunctionItem) => {
+    if (!item.formatter_id || !item.schedule_id) return
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/schedules/${item.schedule_id}/disable`,
+        { method: "POST" },
+      )
+      if (!res.ok) throw new Error("Failed to stop schedule")
+      toast({ title: "Schedule stopped" })
+      setFormatters((prev) =>
+        prev.map((f) => (f.formatter_id === item.formatter_id ? { ...f, schedule_status: "idle" } : f)),
+      )
+    } catch {
+      toast({ title: "Failed to stop", variant: "destructive" })
+    }
+  }
+
+  const openCreateSchedule = (item: FunctionItem) => {
+    if (!item.formatter_id) {
+      toast({ title: "Missing formatter id", variant: "destructive" })
+      return
+    }
+    setCurrentItem(item)
+    setDialogMode("create")
+    setDialogOpen(true)
+  }
+
+  const openEditSchedule = (item: FunctionItem) => {
+    setCurrentItem(item)
+    setDialogMode("edit")
+    setDialogOpen(true)
+  }
+
+  const statusBadge = (s?: FunctionItem["schedule_status"]) => {
+    if (s === "running")
+      return (
+        <Badge variant="secondary" className="bg-green-500/15 text-green-600">
+          Running
+        </Badge>
+      )
+    if (s === "scheduled")
+      return (
+        <Badge variant="secondary" className="bg-amber-500/15 text-amber-600">
+          Scheduled
+        </Badge>
+      )
+    if (s === "idle")
+      return (
+        <Badge variant="secondary" className="bg-foreground/10 text-foreground">
+          Idle
+        </Badge>
+      )
+    return (
+      <Badge variant="secondary" className="bg-foreground/10 text-foreground">
+        Stopped
+      </Badge>
+    )
+  }
+
   if (loading) {
-    return <Loader />   // ✅ use loader component
+    return <Loader />
   }
 
   return (
@@ -86,18 +183,14 @@ export function FunctionsList() {
         />
       </div>
 
-      {filteredFormatters.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-            <Search className="h-6 w-6 text-muted-foreground" />
-          </div>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted" />
           <h3 className="mt-4 text-lg font-semibold">
             {searchQuery ? "No functions found" : "No functions available"}
           </h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
-            {searchQuery
-              ? "Try adjusting your search terms or clear the search to see all functions."
-              : "Get started by creating your first functions."}
+            {searchQuery ? "Try different search terms." : "Get started by creating your first function."}
           </p>
           {!searchQuery && (
             <Button onClick={() => router.push("/functions/new")} className="cursor-pointer">
@@ -107,52 +200,168 @@ export function FunctionsList() {
           )}
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead>API ID</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFormatters.map((fmt) => (
-                <TableRow
-                  key={fmt.formatter_id}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/functions/${fmt.formatter_id}`)}
-                >
-                  <TableCell className="font-medium">{fmt.name}</TableCell>
-                  <TableCell className="font-mono text-sm">{fmt.key}</TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">{fmt.formatter_id}</TableCell>
-                  <TableCell>
-                    <Button
-                      className="cursor-pointer"
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        e.preventDefault()
-                        router.push(`/functions/${fmt.formatter_id}`)
-                      }}
-                    >
-                      Open
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((item) => {
+            const showStart = !!item.schedule_id && item.schedule_status !== "running"
+            const showStop = !!item.schedule_id && item.schedule_status === "running"
+            return (
+              <Card key={item.formatter_id ?? item.api_id} className="overflow-hidden">
+                <div className="flex">
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded border text-xs">
+                          📄
+                        </span>
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{item.key}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="cursor-pointer"
+                          onClick={() => router.push(`/functions/${item.formatter_id}`)}
+                        >
+                          Use
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Star className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <CardContent className="p-0 mt-3">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {item.description ?? "No description provided."}
+                      </p>
+
+                      <div className="mt-3 flex items-center gap-2">
+                        <Clock7 className="h-4 w-4 text-muted-foreground" />
+                        {statusBadge(item.schedule_status)}
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <User2 className="h-4 w-4" />
+                          {item.owner ?? "owner"}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {item.users_count ?? 1}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Star className="h-4 w-4" />
+                          {item.stars ?? 0}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </div>
+
+                  {/* Right action rail */}
+                  <div className="flex flex-col items-center justify-stretch gap-2 border-l p-2 min-w-[44px]">
+                    {!item.schedule_id ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openCreateSchedule(item)}
+                        title="Create schedule"
+                      >
+                        <CalendarPlus className="h-4 w-4 text-green-600" />
+                      </Button>
+                    ) : (
+                      <>
+                        {showStart && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => startSchedule(item)}
+                            title="Start"
+                          >
+                            <Play className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
+                        {showStop && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => stopSchedule(item)}
+                            title="Stop"
+                          >
+                            <Square className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditSchedule(item)}
+                          title="Edit schedule"
+                        >
+                          <Pencil className="h-4 w-4 text-foreground" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
         </div>
       )}
 
-      {searchQuery && filteredFormatters.length > 0 && (
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredFormatters.length} of {formatters.length} formatters
-        </p>
-      )}
+      <ScheduleDialog
+        key={`${dialogMode}-${currentItem?.formatter_id ?? "new"}`}   // <-- add this
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) {
+            // optional: clear context so next open starts clean
+            setCurrentItem(null)
+            setDialogMode("create")
+          }
+        }}
+        mode={dialogMode}
+        formatterId={currentItem?.formatter_id ?? ""}                 // ensure this exists for create
+        scheduleId={currentItem?.schedule_id ?? undefined}
+        initial={
+          dialogMode === "edit"
+            ? {
+              name: `${currentItem?.name ?? ""} schedule`,
+              key: `${currentItem?.key ?? ""}_sync`,
+              description: currentItem?.description ?? "",
+              cron: undefined,
+              timezone: "UTC",
+              isEnabled:
+                currentItem?.schedule_status === "running" ||
+                currentItem?.schedule_status === "scheduled",
+            }
+            : undefined
+        }
+        onSaved={async ({ schedule_id, status }) => {
+          if (!currentItem?.formatter_id) return
+
+          // optimistic update (keeps UI snappy)
+          setFormatters((prev) =>
+            prev.map((f) =>
+              f.formatter_id === currentItem.formatter_id
+                ? { ...f, schedule_id, schedule_status: status as any }
+                : f,
+            ),
+          )
+
+          // if it was CREATE, refresh the full list from server as you asked
+          if (dialogMode === "create") {
+            await fetchFormatters()
+          }
+        }}
+
+      />
+
     </div>
   )
 }
