@@ -42,8 +42,11 @@ import { APP_NAME, INPUT_SAMPLE_NAME, OUTPUT_SAMPLE_NAME } from "@/config/app"
 import { Dynamic } from "@/lib/types/mapper"
 import { useRouter } from "next/navigation"
 import { ArtifactCodeViewer, ArtifactResponse, inferArtifactType } from "./artifacts/artifact-code-viewer"
-import InstructionEditor, { Mention } from "./instructions-editor"
+import InstructionEditor from "./instructions-editor"
 import FilesViewerDialog from "./file-viewer-dialog"
+import { Mention } from "@/lib/types/editor"
+import { TestFunctionPro } from "./models/test-function"
+import { LogLine } from "./terminal-log"
 
 interface GeneratedFunction {
   code: string
@@ -70,24 +73,6 @@ interface APIEndpoint {
   }>
 }
 
-const availableFunctions = [
-  { name: "parseDate", description: "Parse date string to ISO format" },
-  { name: "formatCurrency", description: "Format number as currency" },
-  { name: "slugify", description: "Convert string to URL-friendly slug" },
-  { name: "extractDomain", description: "Extract domain from URL" },
-  { name: "calculateAge", description: "Calculate age from birthdate" },
-  { name: "generateId", description: "Generate unique identifier" },
-  { name: "validateEmail", description: "Validate email format" },
-  { name: "truncateText", description: "Truncate text to specified length" },
-]
-
-const availableVariables = [
-  { name: "currentDate", description: "Current date in ISO format" },
-  { name: "timestamp", description: "Current Unix timestamp" },
-  { name: "userId", description: "Current user ID" },
-  { name: "apiVersion", description: "API version number" },
-]
-
 function toFormatterKey(formatterName: string): string {
   return formatterName
     .toLowerCase()
@@ -105,6 +90,15 @@ type ArtifactsIds = {
   schema?: string | null
   mapper_code?: string | null
   mongoose_model?: string | null
+}
+
+function normalizeApiLogs(apiLogs: any[]): LogLine[] {
+  // api logs shape: { ts, level, args: [...] }
+  return (apiLogs ?? []).map((l) => ({
+    ts: l?.ts,
+    level: (l?.level || "info").toLowerCase(),
+    message: Array.isArray(l?.args) ? l.args.join(" ") : String(l?.args ?? ""),
+  }));
 }
 
 export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
@@ -139,6 +133,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
   const [showTestPopup, setShowTestPopup] = useState(false)
   const [testInput, setTestInput] = useState("")
   const [testOutput, setTestOutput] = useState("")
+  const [logs, setLogs] = useState<LogLine[]>([]);
 
   const [sampleResponseValid, setSampleResponseValid] = useState<boolean | null>(null)
   const [mappedOutputValid, setMappedOutputValid] = useState<boolean | null>(null)
@@ -458,18 +453,29 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
     setShowTestPopup(true)
   }
 
+  const clearLogs = () => setLogs([]);
+
+  const appendLogs = (newLogs: LogLine[] | LogLine) =>
+    setLogs((prev) => prev.concat(Array.isArray(newLogs) ? newLogs : [newLogs]));
+
   const executeTest = async () => {
-    if (!testInput) return
-    const parsed = safeParse(testInput)
+    if (!testInput) return;
+
+    // (your safeParse)
+    const parsed = safeParse(testInput);
     if (!parsed) {
-      toast({ title: "Invalid JSON", description: "Please provide valid JSON for test input.", variant: "destructive" })
-      return
+      toast({ title: "Invalid JSON", description: "Please provide valid JSON for test input.", variant: "destructive" });
+      return;
     }
 
-    setIsTesting(true)
-    setTestOutput("")
+    setIsTesting(true);
+    setTestOutput("");
+    clearLogs();
+
     try {
-      const response = await fetch(api(`/api/test/test`), {
+      appendLogs({ level: "info", message: "Starting test run…" });
+
+      const response = await fetch(api(`/api/test/run`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -477,21 +483,43 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
           sample_request: parsed,
           formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id,
           options: { validate_schema: true, run_model_shape_check: false },
-          artifact_id: artifactIds?.mapper_code
+          artifact_id: artifactIds?.mapper_code,
         }),
-      })
-      if (!response.ok) throw new Error(`API error: ${response.status}`)
-      const { data } = await response.json()
-      setTestOutput(JSON.stringify(data?.mapped_output, null, 2))
-      toast({ title: "✅ Test successful", description: "Function executed successfully with sample data." })
-    } catch (error) {
-      console.error("Function test failed:", error)
-      setTestOutput(`Error: ${error instanceof Error ? error.message : "Failed to execute function"}`)
-      toast({ title: "❌ Test failed", description: "Function execution failed. Check your sample data.", variant: "destructive" })
+      });
+
+      appendLogs({ level: "debug", message: `HTTP ${response.status} received from /api/test/run` });
+
+      if (!response.ok) {
+        appendLogs({ level: "error", message: `API error: ${response.status}` });
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const body = await response.json();
+      const mapped = body?.data?.mapped_output ?? null;
+
+      // show logs from API
+      const apiLogs = normalizeApiLogs(body?.logs);
+      if (apiLogs.length) appendLogs(apiLogs);
+
+      // output
+      setTestOutput(mapped ? JSON.stringify(mapped, null, 2) : "");
+      appendLogs({ level: "info", message: "Test completed successfully." });
+
+      toast({ title: "✅ Test successful", description: "Function executed successfully with sample data." });
+    } catch (error: any) {
+      console.error("Function test failed:", error);
+      setTestOutput(`Error: ${error?.message ?? "Failed to execute function"}`);
+      appendLogs({ level: "error", message: `Test failed: ${error?.message ?? String(error)}` });
+
+      toast({
+        title: "❌ Test failed",
+        description: "Function execution failed. Check your sample data.",
+        variant: "destructive",
+      });
     } finally {
-      setIsTesting(false)
+      setIsTesting(false);
     }
-  }
+  };
 
   const handleReset = () => {
     setTransformName("")
@@ -902,8 +930,8 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     setMappingInstructions={(inst) => {
                       setMappingInstructions(inst);
                     }}
-                    availableVariables={availableVariables}
-                    namingStyle="camelCase"
+                    inputSampleData={safeParse(sampleResponse) || undefined}
+                    outputSampleData={safeParse(mappedOutput) || undefined}
                     onMentionsChange={(mentions) => {
                       setSelectedMentions(mentions);
                     }}
@@ -1037,93 +1065,19 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
           return { ok: true, message: "Saved successfully" };
         }}
       />
-      {/* <Dialog open={showFunctionPopup} onOpenChange={setShowFunctionPopup}>
-        <DialogContent
-          className="
-            w-[95vw] sm:max-w-[95vw] md:max-w-[92vw] lg:max-w-[1200px]
-            xl:max-w-[1400px] 2xl:max-w-[1600px] max-h-[88vh] overflow-y-auto
-          "
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Code className="w-5 h-5" />
-              Generated Artifacts
-            </DialogTitle>
-          </DialogHeader>
-
-          {artifactFiles.length > 0 ? (
-            <div className="grid gap-6 grid-cols-1">
-              {artifactFiles.map((file) => {
-                const artifact: ArtifactResponse = {
-                  artifact_id: file.artifact_id,
-                  formatter_id: schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id || "",
-                  api_id: selectedAPIData?.id || "",
-                  type: inferArtifactType(file.name),
-                  version: "1.0.0",
-                  content: file.content,
-                  meta: { files: [{ path: file.name, name: file.name }] },
-                }
-                return (
-                  <div key={file.artifact_id} className="flex flex-col min-h-[520px]">
-                    <ArtifactCodeViewer artifact={artifact} />
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No artifacts generated.</p>
-          )}
-
-          <div className="flex justify-end mt-4">
-            <Button variant="outline" onClick={() => setShowFunctionPopup(false)} className="cursor-pointer">
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog> */}
 
       {/* Test modal */}
-      <Dialog open={showTestPopup} onOpenChange={setShowTestPopup}>
-        <DialogContent className="w-full sm:max-w-[90vw] md:max-w-[80vw] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FlaskConical className="w-5 h-5" />
-              Test Function
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Sample Input</Label>
-                <Textarea
-                  value={testInput}
-                  onChange={(e) => setTestInput(e.target.value)}
-                  className="font-mono text-sm min-h-[300px] resize-none"
-                  placeholder="Enter test JSON input..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Generated Output</Label>
-                <Textarea
-                  value={testOutput}
-                  readOnly
-                  className="font-mono text-sm min-h-[300px] resize-none bg-muted"
-                  placeholder="Output will appear here after test execution..."
-                />
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <Button onClick={executeTest} disabled={isTesting || !testInput} className="cursor-pointer">
-                <FlaskConical className="w-4 h-4 mr-2" />
-                {isTesting ? "Testing..." : "Execute Test"}
-              </Button>
-              <Button variant="outline" onClick={() => setShowTestPopup(false)} className="cursor-pointer">
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TestFunctionPro
+        open={showTestPopup}
+        onOpenChange={setShowTestPopup}
+        testInput={testInput}
+        onChangeTestInput={setTestInput}
+        testOutput={testOutput}
+        isTesting={isTesting}
+        onExecute={executeTest}
+        logs={logs}
+      />
+
     </div>
   )
 }
