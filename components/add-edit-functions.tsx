@@ -47,6 +47,7 @@ import FilesViewerDialog from "./file-viewer-dialog"
 import { Mention } from "@/lib/types/editor"
 import { TestFunctionPro } from "./models/test-function"
 import { LogLine } from "./terminal-log"
+import { CodeRunnerDialog } from "./code-runner/code-runner-dialog"
 
 interface GeneratedFunction {
   code: string
@@ -1014,15 +1015,15 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Generated artifacts / files viewer */}
-      <FilesViewerDialog
+      <CodeRunnerDialog
         open={showFunctionPopup}
         onOpenChange={setShowFunctionPopup}
         files={artifactFiles}
         formatterId={schemaGenerateResponse?.formatter?.id || initialFormatter?.formatter_id || ""}
         apiId={selectedAPIData?.id || ""}
+        sampleRequest={sampleResponse}
         inferArtifactType={inferArtifactType}
-        onSave={async ({ artifactId, fileName, content, formatterId, apiId }) => {
+        onSave={async ({ artifactId, fileName, content, formatterId, apiId }: any) => {
           const res = await fetch(api(`/api/artifacts/${artifactId}/content`), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },

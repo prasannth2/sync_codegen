@@ -231,7 +231,7 @@ export function FunctionsList() {
                   size="icon"
                   className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2
                !h-6 !w-6 !p-0 rounded-full z-10 cursor-pointer"
-                  onClick={() => openEditSchedule(item)}
+                  onClick={() => router.push(`/functions/${item.formatter_id}`)}
                   title="Edit"
                 >
                   <Pencil className="h-3 w-3 -rotate-90" strokeWidth={1.75} />

@@ -50,7 +50,7 @@ export function LogsTable({
                     {st.text}
                   </Badge>
                 </TableCell>
-                <TableCell className="truncate">{(it as any).workflow_name || "—"}</TableCell>
+                <TableCell className="truncate">{(it as any).workflow_id || "—"}</TableCell>
                 <TableCell>{fmtUSD(it.cost_usd ?? 0.001)}</TableCell>
                 <TableCell>
                   <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs ${tr.className}`}>

@@ -50,10 +50,15 @@ export function TestFunctionPro({
 }: TestFunctionProProps) {
   // Persist panel sizes per function
   const [sizes, setSizes] = React.useState<number[]>(
-    () => JSON.parse(localStorage.getItem(persistenceKey) || "null") ?? DEFAULT_SIZES
+    () => {
+      if (typeof window === 'undefined' || !persistenceKey) return DEFAULT_SIZES;
+      return JSON.parse(localStorage.getItem(persistenceKey) || "null") ?? DEFAULT_SIZES
+    }
   );
   React.useEffect(() => {
-    localStorage.setItem(persistenceKey, JSON.stringify(sizes));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(persistenceKey, JSON.stringify(sizes));
+    }
   }, [persistenceKey, sizes]);
 
   // Auto-expand logs while executing
