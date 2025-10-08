@@ -32,7 +32,7 @@ type CanonicalScheduleStatus = "running" | "scheduled" | "idle"
 function normalizeStatus(raw: string | undefined, hasId: boolean): CanonicalScheduleStatus {
   const v = (raw || "").toLowerCase()
   if (["enabled", "running", "active", "on"].includes(v)) return "running"
-  if (["disabled", "stopped", "off"].includes(v)) return "idle"
+  if (["disabled", "stopped", "idle"].includes(v)) return "idle"
   if (["scheduled", "pending"].includes(v)) return "scheduled"
   // fallback: if it has a schedule_id but no clear status, treat as scheduled
   return hasId ? "scheduled" : "idle"
@@ -162,7 +162,7 @@ export function FunctionsList() {
       )
     if (s === "idle")
       return (
-        <Badge variant="secondary" className="bg-foreground/10 text-foreground">
+        <Badge variant="secondary" className="bg-amber-500/15 text-amber-600">
           Idle
         </Badge>
       )
