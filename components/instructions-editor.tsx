@@ -1,84 +1,27 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import useSWR from "swr";
-import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Extension } from "@tiptap/core";
-import Suggestion from "@tiptap/suggestion";
 import HardBreak from "@tiptap/extension-hard-break";
-import { Plugin, PluginKey } from "prosemirror-state";
-import { Decoration, DecorationSet } from "prosemirror-view";
 
-// shadcn/ui
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { DOT_ALLOWED_PREFIXES, FieldItem, flattenSchema, JsonSchema, posFrom, textToHtml } from "@/lib/utils/editor";
+import { textToHtml } from "@/lib/utils/editor";
+import { MentionHighlight } from "./editors/mention-highlight";
+import { Group, Item, ApiRec, FunctionRec, ModelRec, Mention, SlashGroup, SlashItem } from "@/lib/types/editor";
+import { AtMenu } from "./editors/at-menu";
 
-/* ---------- Types ---------- */
-type ApiRec = { _id?: string; name: string; key?: string };
-type FunctionRec = { _id: string; api_id?: string; name: string; key?: string };
-type ModelRec = {
-  name: string;
-  collectionName?: string;
-  type?: string;
-  isView?: boolean;
-  estimatedCount?: number;
-  schemaKind?: string;
-};
+import { modelsFromMeta } from "@/lib/types/meta-models-adapter";
 
-type MentionApi = {
-  mention_type: "apis";
-  id: string;
-  name: string;
-  data: ApiRec;
-};
-type MentionFunction = {
-  mention_type: "functions";
-  id: string; // function _id
-  name: string; // function name
-  data: FunctionRec;
-};
-type MentionModel = {
-  mention_type: "models";
-  id: string; // prefer collectionName, else name
-  name: string; // collectionName|name
-  data: ModelRec;
-};
-
-export type Mention = MentionApi | MentionFunction | MentionModel;
-
-type GroupKey = "api" | "function" | "model";
-
-type Item = {
-  id?: string;
-  key?: string;
-  name: string;
-  description?: string;
-  kind: GroupKey;
-  collectionName?: string; // for models
-};
-
-type Group = {
-  key: GroupKey;
-  title: string;
-  items: Item[];
-};
+import { SlashFields } from "./editors/slash-fields";
 
 export type InstructionEditorProps = {
   mappingInstructions: string;
   setMappingInstructions: (val: string) => void;
-  availableVariables?: { name: string; description?: string }[]; // kept for compat
-  namingStyle?: string; // kept for compat
-  onMentionsChange?: (mentions: Mention[]) => void; // optional
+  inputSampleData?: any;
+  outputSampleData?: any;
+  onMentionsChange?: (mentions: Mention[]) => void;
 };
 
 /* ---------- Data fetch ---------- */
@@ -88,212 +31,59 @@ const fetcher = async (url: string) => {
   return r.json();
 };
 
-/* ---------- shadcn Command popup ---------- */
-function SuggestionList({
-  groups,
-  command,
-  onClose,
-  clientRect,
-  loading,
-}: {
-  groups: Group[];
-  command: (i: Item) => void;
-  onClose: () => void;
-  clientRect: () => DOMRect | null;
-  loading?: boolean;
-}) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 320 });
+/* ---------- tiny helpers for slash menu (input/output fields) ---------- */
+type FieldPath = { path: string; valueType: string };
+const inferType = (v: any): string =>
+  v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
 
-  const reposition = () => {
-    const rect = clientRect();
-    if (rect) {
-      setPos({
-        top: rect.bottom + 6,
-        left: rect.left,
-        width: Math.min(420, Math.max(280, rect.width)),
-      });
+function extractJsonPaths(obj: any, prefix = ""): FieldPath[] {
+  const out: FieldPath[] = [];
+  const add = (p: string, v: any) => out.push({ path: p, valueType: inferType(v) });
+
+  const walk = (node: any, base: string) => {
+    if (node === null || typeof node !== "object") {
+      if (base) add(base, node);
+      return;
+    }
+    if (Array.isArray(node)) {
+      if (base) add(base, node);
+      if (node.length > 0) walk(node[0], base ? `${base}[0]` : "[0]");
+      return;
+    }
+    const keys = Object.keys(node);
+    if (!keys.length) {
+      if (base) add(base, node);
+      return;
+    }
+    for (const k of keys) {
+      const next = base ? `${base}.${k}` : k;
+      walk(node[k], next);
     }
   };
 
-  useEffect(() => {
-    reposition();
-  }, []);
-  useEffect(() => {
-    const h = () => reposition();
-    window.addEventListener("scroll", h, true);
-    window.addEventListener("resize", h);
-    return () => {
-      window.removeEventListener("scroll", h, true);
-      window.removeEventListener("resize", h);
-    };
-  }, []);
+  if (prefix) walk(obj, prefix);
+  else if (obj && typeof obj === "object") {
+    for (const k of Object.keys(obj)) walk(obj[k], k);
+  } else add(prefix || "value", obj);
 
-  return (
-    <div
-      ref={containerRef}
-      className="fixed z-50 rounded-md border bg-popover text-popover-foreground shadow-md"
-      style={{ top: pos.top, left: pos.left, width: pos.width }}
-      onMouseDown={(e) => e.preventDefault()} // keep focus in editor
-    >
-      <Command shouldFilter={false}>
-        <CommandInput placeholder="Filter…" />
-        <CommandList className="max-h-72">
-          <CommandEmpty>{loading ? "Loading…" : "No results"}</CommandEmpty>
-
-          {groups
-            .filter((g) => g.items.length)
-            .map((g, gi) => (
-              <CommandGroup key={g.key} heading={g.title}>
-                {g.items.map((it, i) => (
-                  <CommandItem
-                    key={`${g.key}-${it.name}-${i}`}
-                    onSelect={() => {
-                      command(it);
-                      onClose();
-                    }}
-                    className="flex flex-col items-start gap-0.5"
-                  >
-                    <span className="font-medium">{it.name}</span>
-                    {it.description ? (
-                      <span className="text-xs text-muted-foreground">{it.description}</span>
-                    ) : null}
-                  </CommandItem>
-                ))}
-                {gi < groups.length - 1 ? <Separator className="my-1" /> : null}
-              </CommandGroup>
-            ))}
-        </CommandList>
-      </Command>
-    </div>
-  );
+  return out;
 }
-
-/* ---------- TipTap extension: @ menu ---------- */
-const AtMenu = (opts: {
-  char?: string;
-  getGroups: (query: string) => Group[];
-  loading?: () => boolean;
-  onInsert: (payload: { editor: any; range: { from: number; to: number }; item: Item }) => void;
-}) =>
-  Extension.create({
-    name: "at-menu",
-    addProseMirrorPlugins() {
-      let rr: ReactRenderer | null = null;
-
-      return [
-        Suggestion<Item>({
-          pluginKey: new PluginKey("suggestion-at"),
-          editor: this.editor,
-          char: opts.char ?? "@",
-          allowSpaces: true,
-          allowToIncludeChar: true,
-          items: ({ query }) => opts.getGroups(query).flatMap((g) => g.items),
-          command: ({ editor, range, props }) => opts.onInsert({ editor, range, item: props }),
-          render: () => ({
-            onStart: (props) => {
-              rr = new ReactRenderer(SuggestionList, {
-                props: {
-                  groups: opts.getGroups(props.query),
-                  command: props.command,
-                  onClose: () => props.editor.commands.focus(),
-                  clientRect: props.clientRect as any,
-                  loading: opts.loading?.(),
-                },
-                editor: props.editor,
-              });
-              document.body.appendChild(rr.element);
-            },
-            onUpdate: (props) => {
-              rr?.updateProps({
-                groups: opts.getGroups(props.query),
-                command: props.command,
-                onClose: () => props.editor.commands.focus(),
-                clientRect: props.clientRect as any,
-                loading: opts.loading?.(),
-              });
-            },
-            onKeyDown: ({ event }) => (event.key === "Escape" ? true : false),
-            onExit: () => {
-              rr?.destroy();
-              rr = null;
-            },
-          }),
-        }),
-      ];
-    },
-  });
-
-/* ---------- TipTap extension: inline highlighting (decorations) ---------- */
-/**
- * This keeps your document as plain text but visually styles tokens:
- * - @functionName
- * - #collectionName or #ModelName
- * - /api(someKey|_id|Name)
- */
-const MentionHighlight = Extension.create({
-  name: "mention-highlight",
-
-  addProseMirrorPlugins() {
-    const key = new PluginKey("mention-highlight");
-
-    const buildDecos = (doc: any) => {
-      const decorations: Decoration[] = [];
-      // const rx = /\/api\(([^)]+)\)|#[A-Za-z0-9_]+|@[A-Za-z0-9_]+/g;
-      const rx = /\/api\(([^)]+)\)|#[A-Za-z0-9_]+(?:\.[A-Za-z0-9_\.]+)?|@[A-Za-z0-9_]+/g;
-
-      doc.descendants((node: any, pos: number) => {
-        if (!node.isText) return;
-        const text: string = node.text ?? "";
-        let m: RegExpExecArray | null;
-        while ((m = rx.exec(text))) {
-          const start = pos + m.index;
-          const end = start + m[0].length;
-          const val = m[0];
-
-          let cls = "mention-chip";
-          if (val.startsWith("/api(")) cls += " mention-api";
-          else if (val.startsWith("#")) cls += " mention-model";
-          else if (val.startsWith("@")) cls += " mention-func";
-
-          decorations.push(Decoration.inline(start, end, { class: cls }));
-        }
-      });
-
-      return DecorationSet.create(doc, decorations);
-    };
-
-    // ✅ Return an array of plugins
-    return [
-      new Plugin({
-        key,
-        state: {
-          init: (_, { doc }) => buildDecos(doc),
-          apply: (tr, old) => {
-            if (tr.docChanged) return buildDecos(tr.doc);
-            return old.map(tr.mapping, tr.doc);
-          },
-        },
-        props: {
-          decorations(state) {
-            return this.getState(state);
-          },
-        },
-      }),
-    ];
-  },
-});
 
 /* ---------- Main controlled component ---------- */
 export default function InstructionEditor({
   mappingInstructions,
   setMappingInstructions,
   onMentionsChange,
+  inputSampleData,
+  outputSampleData,
 }: InstructionEditorProps) {
   const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-  const { data, isLoading } = useSWR(base ? `${base}/api/meta?includeCounts=true` : null, fetcher);
+  const { data, isLoading } = useSWR(
+    base ? `${base}/api/meta?includeCounts=true` : null,
+    fetcher
+  );
 
-  // Build groups from API
+  // Build groups from API (for @ menu)
   const groups: Group[] = useMemo(() => {
     const apis: Item[] =
       data?.data?.apis?.map((a: any) => ({
@@ -323,7 +113,6 @@ export default function InstructionEditor({
 
     return [
       { key: "api", title: "APIs", items: apis },
-      // If/when you’re ready to expose functions in the palette, just uncomment:
       // { key: "function", title: "Functions", items: funcs },
       { key: "model", title: "Models", items: models },
     ];
@@ -367,7 +156,6 @@ export default function InstructionEditor({
 
   // ---------- Mention extraction ----------
   const prevMentionsRef = useRef<string>("[]");
-
   const norm = (s?: string) => (s ?? "").trim();
 
   const extractMentions = (text: string): Mention[] => {
@@ -402,14 +190,25 @@ export default function InstructionEditor({
       }
     }
 
-    // apis: /api(inner)
-    const apiTokens = text.match(/\/api\(([^)]+)\)/g) || [];
-    for (const tok of apiTokens) {
+    // APIs: new [[api:inner]] and legacy /api(inner)
+    const apiNew = text.match(/\[\[api:([^\]]+)\]\]/g) || [];
+    for (const tok of apiNew) {
+      const inner = tok.slice(6, -2); // remove '[[api:' + ']]'
+      const a =
+        apiIndex.byKey.get(inner) ?? apiIndex.byId.get(inner) ?? apiIndex.byName.get(inner);
+      if (a) {
+        const id = a._id ?? a.key ?? a.name;
+        if (!seen.has(id)) {
+          seen.add(id);
+          out.push({ mention_type: "apis", id, name: a.name, data: a });
+        }
+      }
+    }
+    const apiLegacy = text.match(/\/api\(([^)]+)\)/g) || [];
+    for (const tok of apiLegacy) {
       const inner = norm(tok.slice(5, -1));
       const a =
-        apiIndex.byKey.get(inner) ??
-        apiIndex.byId.get(inner) ??
-        apiIndex.byName.get(inner);
+        apiIndex.byKey.get(inner) ?? apiIndex.byId.get(inner) ?? apiIndex.byName.get(inner);
       if (a) {
         const id = a._id ?? a.key ?? a.name;
         if (!seen.has(id)) {
@@ -432,7 +231,7 @@ export default function InstructionEditor({
     }
   };
 
-  // ---------- Filtering for palette ----------
+  // ---------- Filtering for @ palette ----------
   const getGroups = (q: string): Group[] => {
     const query = (q ?? "").toLowerCase().trim();
     const match = (i: Item) =>
@@ -443,17 +242,102 @@ export default function InstructionEditor({
     return groups.map((g) => ({ ...g, items: g.items.filter(match) }));
   };
 
+  /* >>> Build slash field groups: INPUT + OUTPUT + MODELS <<< */
+  const slashGroups: SlashGroup[] = useMemo(() => {
+    const metaModels = data?.data?.models ?? [];
+    const modelSpecs = modelsFromMeta(metaModels);
+
+    // models → groups
+    const modelGroups: SlashGroup[] = modelSpecs.map((m) => ({
+      key: `slash-model-${m.name}`,
+      title: `Model: ${m.name}`,
+      items: (m.fields ?? []).map<SlashItem>((f) => ({
+        name: f,
+        description: m.collectionName ? `(${m.collectionName})` : undefined,
+        kind: "field",
+        meta: { source: "model", modelName: m.name, path: f },
+      })),
+    }));
+
+    // input → single group (if provided)
+    const inputGroup: SlashGroup[] = inputSampleData
+      ? [
+          {
+            key: "slash-input",
+            title: "Input fields",
+            items: extractJsonPaths(inputSampleData).map<SlashItem>(({ path, valueType }) => ({
+              name: path,
+              description: `Type: ${valueType}`,
+              kind: "field",
+              meta: { source: "input", modelName: "input", path },
+            })),
+          },
+        ]
+      : [];
+
+    // output → single group (if provided)
+    const outputGroup: SlashGroup[] = outputSampleData
+      ? [
+          {
+            key: "slash-output",
+            title: "Output fields",
+            items: extractJsonPaths(outputSampleData).map<SlashItem>(({ path, valueType }) => ({
+              name: path,
+              description: `Type: ${valueType}`,
+              kind: "field",
+              meta: { source: "output", modelName: "output", path },
+            })),
+          },
+        ]
+      : [];
+
+    return [...inputGroup, ...outputGroup, ...modelGroups];
+  }, [data, JSON.stringify(inputSampleData ?? null), JSON.stringify(outputSampleData ?? null)]);
+
+  // filter for slash palette — explicitly return SlashGroup[]
+  const getSlashGroups = (q: string): SlashGroup[] => {
+    const query = (q ?? "").toLowerCase().trim();
+    if (!query) return slashGroups;
+    return slashGroups.map<SlashGroup>((g) => ({
+      ...g,
+      items: g.items.filter(
+        (i: SlashItem) =>
+          i.name.toLowerCase().includes(query) ||
+          (i.description ?? "").toLowerCase().includes(query)
+      ),
+    }));
+  };
+
+  // custom insertion that supports input/output/model tokens
+  const insertFieldToken = ({
+    editor,
+    range,
+    item,
+  }: {
+    editor: any;
+    range: { from: number; to: number };
+    item: SlashItem;
+  }) => {
+    const src = item?.meta?.source as "input" | "output" | "model" | undefined;
+    const modelName = item?.meta?.modelName as string | undefined;
+    const path = item?.meta?.path ?? item?.name;
+
+    let token = "";
+    if (src === "input") token = `{{input.${path}}}`;
+    else if (src === "output") token = `{{output.${path}}}`;
+    else if (src === "model") token = `{{model.${modelName}.${path}}}`;
+    else token = `{{${path}}}`;
+
+    editor.chain().focus().deleteRange(range).insertContent(token + " ").run();
+  };
+
   // ---------- Editor ----------
   const lastExternal = useRef<string>(mappingInstructions ?? "");
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({
-          // Keep paragraphs & lists; we'll add HardBreak for Shift+Enter newlines
-        }),
-        HardBreak.configure({
-          keepMarks: false,
-        }),
+        StarterKit.configure({}),
+        HardBreak.configure({ keepMarks: false }),
         AtMenu({
           char: "@",
           getGroups,
@@ -461,7 +345,8 @@ export default function InstructionEditor({
           onInsert: ({ editor, range, item }) => {
             let text = item.name;
             if (item.kind === "api") {
-              text = `/api(${item.key ?? item.id ?? item.name})`;
+              const inner = item.key ?? item.id ?? item.name;
+              text = `[[api:${inner}]]`;
             } else if (item.kind === "function") {
               text = `@${item.name}`;
             } else if (item.kind === "model") {
@@ -470,41 +355,50 @@ export default function InstructionEditor({
             }
             editor.chain().focus().deleteRange(range).insertContent(text + " ").run();
 
-            // emit mentions immediately after an insertion
             const now = editor.state.doc.textBetween(
               0,
               editor.state.doc.content.size,
-              "\n", // block separator
-              "\n"  // leafText (hardBreak) separator
+              "\n",
+              "\n"
             );
             maybeEmitMentions(now);
           },
         }),
-        MentionHighlight
+
+        // "/" fields menu (input + output + models)
+        SlashFields({
+          char: "/",
+          getGroups: getSlashGroups,
+          loading: () => !!isLoading,
+          onInsert: ({ editor, range, item }) => insertFieldToken({ editor, range, item }),
+        }),
+
+        MentionHighlight,
       ],
       content: textToHtml(mappingInstructions),
       editorProps: {
         attributes: {
           class:
-            // Keep your look; add chip styling via utility classes
             "prose prose-invert max-w-none min-h-[420px] w-full rounded border bg-background p-4 outline-none",
         },
         handleKeyDown(view, event) {
-          // Chat-like new line behavior: Shift+Enter => soft break, Enter => paragraph (default)
           if (event.key === "Enter" && event.shiftKey) {
-            (view as any).dispatch((view.state as any).tr.replaceSelectionWith((view.state.schema as any).nodes.hardBreak.create()));
+            (view as any).dispatch(
+              (view.state as any).tr.replaceSelectionWith(
+                (view.state.schema as any).nodes.hardBreak.create()
+              )
+            );
             return true;
           }
           return false;
         },
       },
       onUpdate: ({ editor }) => {
-        // Keep both block breaks and hard breaks as "\n"
         const text = editor.state.doc.textBetween(
           0,
           editor.state.doc.content.size,
-          "\n", // block separator
-          "\n"  // leafText (hardBreak) separator
+          "\n",
+          "\n"
         );
         if (text !== lastExternal.current) {
           lastExternal.current = text;
@@ -513,8 +407,11 @@ export default function InstructionEditor({
         }
       },
     },
-    // Re-init when palette changes (sizes) so results stay fresh
-    [JSON.stringify(groups.map((g) => g.items.length)), isLoading]
+    [
+      JSON.stringify(groups.map((g) => g.items.length)),
+      JSON.stringify(slashGroups.map((g: SlashGroup) => g.items.length)),
+      isLoading,
+    ]
   );
 
   // reflect external changes
@@ -523,8 +420,8 @@ export default function InstructionEditor({
     const current = editor.state.doc.textBetween(
       0,
       editor.state.doc.content.size,
-      "\n", // block separator
-      "\n"  // leafText (hardBreak) separator
+      "\n",
+      "\n"
     );
 
     if (mappingInstructions !== current) {
@@ -535,9 +432,10 @@ export default function InstructionEditor({
   }, [mappingInstructions, editor]);
 
   // Show “selected mentions” chips (optional UX)
-  const selectedMentions = useMemo(() => extractMentions(mappingInstructions || ""), [
-    mappingInstructions,
-  ]);
+  const selectedMentions = useMemo(
+    () => extractMentions(mappingInstructions || ""),
+    [mappingInstructions]
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -549,8 +447,8 @@ export default function InstructionEditor({
               m.mention_type === "apis"
                 ? `API: ${m.name}`
                 : m.mention_type === "functions"
-                  ? `Fn: ${m.name}`
-                  : `Model: ${m.name}`;
+                ? `Fn: ${m.name}`
+                : `Model: ${m.name}`;
             return (
               <Badge
                 key={`${m.mention_type}-${m.id}`}
@@ -559,8 +457,8 @@ export default function InstructionEditor({
                   m.mention_type === "apis"
                     ? "border border-primary/30"
                     : m.mention_type === "functions"
-                      ? "border border-blue-400/30"
-                      : "border border-emerald-400/30"
+                    ? "border border-blue-400/30"
+                    : "border border-emerald-400/30"
                 }
               >
                 {label}
@@ -570,8 +468,6 @@ export default function InstructionEditor({
         </div>
       )}
 
-      {/* Inline styles for the chips inside the editor (decoration classes). 
-          Tailwind can't reach ProseMirror decorations reliably, so we add a tiny CSS bridge. */}
       <style jsx>{`
         :global(.mention-chip) {
           border-radius: 0.375rem;
@@ -580,17 +476,33 @@ export default function InstructionEditor({
           font-weight: 600;
           white-space: nowrap;
         }
+        /* API (indigo) */
         :global(.mention-api) {
-          background: rgba(99, 102, 241, 0.12); /* indigo-500/12 */
+          background: rgba(99, 102, 241, 0.12);
           border: 1px solid rgba(99, 102, 241, 0.35);
         }
+        /* Function (blue) */
         :global(.mention-func) {
-          background: rgba(59, 130, 246, 0.12); /* blue-500/12 */
+          background: rgba(59, 130, 246, 0.12);
           border: 1px solid rgba(59, 130, 246, 0.35);
         }
+        /* Model tag #Model (emerald) */
         :global(.mention-model) {
-          background: rgba(16, 185, 129, 0.12); /* emerald-500/12 */
+          background: rgba(16, 185, 129, 0.12);
           border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        /* Field tokens — distinct colors for each source */
+        :global(.mention-field-model) {
+          background: rgba(16, 185, 129, 0.12);   /* emerald */
+          border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        :global(.mention-field-input) {
+          background: rgba(245, 158, 11, 0.12);   /* amber */
+          border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+        :global(.mention-field-output) {
+          background: rgba(99, 102, 241, 0.12);   /* indigo */
+          border: 1px solid rgba(99, 102, 241, 0.35);
         }
       `}</style>
     </div>

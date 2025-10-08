@@ -473,7 +473,7 @@ export function MapperSchemaGenerator() {
     setTestOutput("")
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/test/test`, {
+      const response = await fetch(`${API_BASE_URL}/api/test/run`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
