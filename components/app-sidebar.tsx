@@ -68,8 +68,8 @@ export function AppSidebar() {
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
-                                <Link href="/logs" className="block">
-                                    <SidebarMenuButton isActive={isActive("/logs")} className="cursor-pointer">
+                                <Link href="/workflow-logs" className="block">
+                                    <SidebarMenuButton isActive={isActive("/workflow-logs")} className="cursor-pointer">
                                         <ScrollText />
                                         <span>Logs</span>
                                     </SidebarMenuButton>

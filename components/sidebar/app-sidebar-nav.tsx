@@ -53,8 +53,8 @@ export function AppSidebarNav() {
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
-                                <Link href="/logs" className="block">
-                                    <ClientActiveButton href="/logs" tooltip="Logs">
+                                <Link href="/workflow-logs" className="block">
+                                    <ClientActiveButton href="/workflow-logs" tooltip="Logs">
                                         <ScrollText />
                                         <span>Logs</span>
                                     </ClientActiveButton>
