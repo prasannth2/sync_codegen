@@ -1,6 +1,7 @@
 "use client";
 
 import { AddEditFunctions } from "@/components/add-edit-functions";
+import { FunctionEditorSkeleton } from "@/components/functions-editor-loader";
 import { useFunction } from "@/hooks/use-functions";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -31,13 +32,13 @@ export default function ApisPage({
   }
 
   if (isLoading) {
-    return <div>Loading</div>
+    return <FunctionEditorSkeleton />
   }
 
   return (
-    <main className="min-h-screen bg-background py-8 px-4">
+    <main className="min-h-screen bg-background py-2 px-4">
       <div className="mx-auto">
-        <Suspense fallback={<div>Loading Functions...</div>}>
+        <Suspense fallback={<FunctionEditorSkeleton />}>
           <AddEditFunctions initialFormatter={myFunction?.data} />
         </Suspense>
       </div>

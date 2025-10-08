@@ -98,6 +98,9 @@ importers:
       '@tiptap/core':
         specifier: ^2.26.1
         version: 2.26.2(@tiptap/pm@2.26.2)
+      '@tiptap/extension-hard-break':
+        specifier: ^3.6.5
+        version: 3.6.5(@tiptap/core@2.26.2(@tiptap/pm@2.26.2))
       '@tiptap/extension-mention':
         specifier: ^2.26.1
         version: 2.26.2(@tiptap/core@2.26.2(@tiptap/pm@2.26.2))(@tiptap/pm@2.26.2)(@tiptap/suggestion@2.26.2(@tiptap/core@2.26.2(@tiptap/pm@2.26.2))(@tiptap/pm@2.26.2))
@@ -149,6 +152,12 @@ importers:
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
+      prosemirror-state:
+        specifier: ^1.4.3
+        version: 1.4.3
+      prosemirror-view:
+        specifier: ^1.41.2
+        version: 1.41.2
       react:
         specifier: ^18
         version: 18.3.1
@@ -1154,6 +1163,11 @@ packages:
     resolution: {integrity: sha512-OLpeTey7p3ChyEsABLPvNv7rD/8E4k1JTt+H+MUjyL0dnrZuIWluckUJCJKnV8PhR9Mifngk1MTFUilpooiv1g==}
     peerDependencies:
       '@tiptap/core': ^2.7.0
+
+  '@tiptap/extension-hard-break@3.6.5':
+    resolution: {integrity: sha512-6iMS6SzIn7+X95okRX8y3l/4f1G3lTrq24sbcAX4MHITncDC6g3TrdAxdA67Tqn5NI/OQx0LwF3kFJDO8QTAUg==}
+    peerDependencies:
+      '@tiptap/core': ^3.6.5
 
   '@tiptap/extension-heading@2.26.2':
     resolution: {integrity: sha512-0VAr1l1QKFJ0B2l4D4wV0LRlyFYeJt0S09mz+HPF2TqKF4twmPjaGD6o5zzXWl8c4cQj1CmM8P+9an3SKRjOaA==}
@@ -2946,6 +2960,10 @@ snapshots:
       '@tiptap/pm': 2.26.2
 
   '@tiptap/extension-hard-break@2.26.2(@tiptap/core@2.26.2(@tiptap/pm@2.26.2))':
+    dependencies:
+      '@tiptap/core': 2.26.2(@tiptap/pm@2.26.2)
+
+  '@tiptap/extension-hard-break@3.6.5(@tiptap/core@2.26.2(@tiptap/pm@2.26.2))':
     dependencies:
       '@tiptap/core': 2.26.2(@tiptap/pm@2.26.2)
 

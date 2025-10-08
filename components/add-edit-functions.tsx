@@ -33,7 +33,7 @@ import {
   PlayCircle,
   RotateCcw,
   Settings,
-  TestTube,
+  FlaskConical,
   XCircle,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -595,10 +595,10 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
   return (
     <div className="w-full h-screen flex flex-col">
       <div className="border-b border-border">
-        <div className="p-6 space-y-4">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-balance text-foreground">{APP_NAME}</h1>
-            <p className="text-muted-foreground">Clean your response data with intelligent transformations</p>
+        <div className="p-6 space-y-1">
+          <div className="text-start space-y-1">
+            <h1 className="text-3xl font-bold text-balance text-foreground">{initialFormatter ? "Edit" : "Add"} Function</h1>
+            {/* <p className="text-muted-foreground">Clean your response data with intelligent transformations</p> */}
           </div>
 
           {showConfiguration && (
@@ -721,19 +721,6 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     </Button>
                   )}
 
-                  {canShowTest && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleTestFunction}
-                      className="cursor-pointer"
-                      title="Test Function"
-                    >
-                      <TestTube className="w-4 h-4 mr-2" />
-                      Test
-                    </Button>
-                  )}
-
                   <Button
                     onClick={handleGenerateFunction}
                     disabled={!validateInputs() || isGeneratingFunction || isSchemaGenerateLoading}
@@ -744,6 +731,45 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     {isGeneratingFunction ? "Generating..." : "Generate Function"}
                   </Button>
 
+                  {canShowTest && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestFunction}
+                      className="cursor-pointer"
+                      title="Test Function"
+                    >
+                      <FlaskConical className="w-4 h-4 mr-2" />
+                      Test
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+
+            {/* H3 */}
+            <div className="px-6 py-5">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {mappedOutputValid === null ? (
+                      <div className="w-5 h-5 bg-muted" />
+                    ) : mappedOutputValid ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    )}
+                    <h2 className="text-lg font-semibold">{OUTPUT_SAMPLE_NAME}</h2>
+                  </div>
+                  {mappedOutput && (
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(mappedOutput)} className="cursor-pointer">
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -775,29 +801,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     <FileType className="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
-            </div>
 
-
-            {/* H3 */}
-            <div className="px-6 py-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {mappedOutputValid === null ? (
-                    <div className="w-5 h-5 bg-muted" />
-                  ) : mappedOutputValid ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  )}
-                  <h2 className="text-lg font-semibold">{OUTPUT_SAMPLE_NAME}</h2>
-                </div>
-                {mappedOutput && (
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(mappedOutput)} className="cursor-pointer">
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy
-                  </Button>
-                )}
               </div>
             </div>
           </div>
@@ -917,7 +921,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                         <span className="font-medium text-blue-700 dark:text-blue-300">Function Ready</span>
                       </div>
                       <Button onClick={handleTestFunction} disabled={!sampleResponse} size="sm" variant="outline" className="cursor-pointer">
-                        <TestTube className="w-4 h-4 mr-2" />
+                        <FlaskConical className="w-4 h-4 mr-2" />
                         Test Function
                       </Button>
                     </div>
@@ -1083,7 +1087,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
         <DialogContent className="w-full sm:max-w-[90vw] md:max-w-[80vw] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <TestTube className="w-5 h-5" />
+              <FlaskConical className="w-5 h-5" />
               Test Function
             </DialogTitle>
           </DialogHeader>
@@ -1110,7 +1114,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
             </div>
             <div className="flex justify-between">
               <Button onClick={executeTest} disabled={isTesting || !testInput} className="cursor-pointer">
-                <TestTube className="w-4 h-4 mr-2" />
+                <FlaskConical className="w-4 h-4 mr-2" />
                 {isTesting ? "Testing..." : "Execute Test"}
               </Button>
               <Button variant="outline" onClick={() => setShowTestPopup(false)} className="cursor-pointer">

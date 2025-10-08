@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/command";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { DOT_ALLOWED_PREFIXES, FieldItem, flattenSchema, JsonSchema, posFrom, textToHtml } from "@/lib/utils/editor";
+import { textToHtml } from "@/lib/utils/editor";
 
 /* ---------- Types ---------- */
 type ApiRec = { _id?: string; name: string; key?: string };
@@ -183,7 +183,6 @@ const AtMenu = (opts: {
 
       return [
         Suggestion<Item>({
-          pluginKey: new PluginKey("suggestion-at"),
           editor: this.editor,
           char: opts.char ?? "@",
           allowSpaces: true,
@@ -239,8 +238,7 @@ const MentionHighlight = Extension.create({
 
     const buildDecos = (doc: any) => {
       const decorations: Decoration[] = [];
-      // const rx = /\/api\(([^)]+)\)|#[A-Za-z0-9_]+|@[A-Za-z0-9_]+/g;
-      const rx = /\/api\(([^)]+)\)|#[A-Za-z0-9_]+(?:\.[A-Za-z0-9_\.]+)?|@[A-Za-z0-9_]+/g;
+      const rx = /\/api\(([^)]+)\)|#[A-Za-z0-9_]+|@[A-Za-z0-9_]+/g;
 
       doc.descendants((node: any, pos: number) => {
         if (!node.isText) return;
@@ -480,7 +478,7 @@ export default function InstructionEditor({
             maybeEmitMentions(now);
           },
         }),
-        MentionHighlight
+        MentionHighlight, // purely visual; keeps underlying text untouched
       ],
       content: textToHtml(mappingInstructions),
       editorProps: {

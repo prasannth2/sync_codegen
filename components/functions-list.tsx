@@ -129,6 +129,7 @@ export function FunctionsList() {
                   <TableCell className="font-mono text-sm text-muted-foreground">{fmt.formatter_id}</TableCell>
                   <TableCell>
                     <Button
+                      className="cursor-pointer"
                       size="sm"
                       variant="outline"
                       onClick={(e) => {
