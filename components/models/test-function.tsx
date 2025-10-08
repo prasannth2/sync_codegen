@@ -102,12 +102,12 @@ export function TestFunctionPro({
               <Button
                 onClick={onExecute}
                 disabled={!testInput || !!isTesting}
-                className="min-w-[142px]"
+                className="min-w-[142px] cursor-pointer"
               >
                 {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FlaskConical className="mr-2 h-4 w-4" />}
                 {isTesting ? "Running…" : "Execute Test"}
               </Button>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button className="cursor-pointer" variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
             </div>
           </DialogHeader>
 
@@ -156,10 +156,6 @@ export function TestFunctionPro({
 
             <ResizablePanel defaultSize={sizes[2]} minSize={16}>
               <section className="h-full flex flex-col p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <Label className="text-sm font-medium">Execution Log</Label>
-                  <Button size="sm" variant="outline" onClick={onClearLogs}>Clear</Button>
-                </div>
                 <TerminalLog logs={logs} height="100%" />
               </section>
             </ResizablePanel>
@@ -192,10 +188,6 @@ export function TestFunctionPro({
                 />
               </TabsContent>
               <TabsContent value="logs" className="m-0 h-full">
-                <div className="mb-2 flex items-center justify-between">
-                  <Label className="text-sm font-medium">Execution Log</Label>
-                  <Button size="sm" variant="outline" onClick={onClearLogs}>Clear</Button>
-                </div>
                 <TerminalLog logs={logs} height={260} />
               </TabsContent>
             </div>

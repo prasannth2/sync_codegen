@@ -27,7 +27,7 @@ import {
   ChevronDown,
   Code,
   Copy,
-  FileCode2,
+  Eye,
   FileJson,
   FileType,
   PlayCircle,
@@ -679,52 +679,6 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                 <span>{selectedAPIData?.name}</span>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/functions")}
-                  className="cursor-pointer"
-                >
-                  Go to List
-                </Button>
-                {!initialFormatter && <Button variant="outline" size="sm" onClick={handleReset} className="cursor-pointer">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset All
-                </Button>}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showMainInterface && (
-        <section className="flex-1 min-h-0">
-          {/* Unified headers */}
-          <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
-            {/* H1 */}
-            <div className="px-6 py-5">
-              <div className="flex items-center gap-2">
-                {sampleResponseValid === null ? (
-                  <div className="w-5 h-5 bg-muted" />
-                ) : sampleResponseValid ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-500" />
-                )}
-                <h2 className="text-lg font-semibold">{INPUT_SAMPLE_NAME}</h2>
-              </div>
-            </div>
-
-            {/* H2 */}
-            {/* H2: Transform Instructions (title row + actions row) */}
-            <div className="px-6 py-5 min-h-[72px]">
-              <div className="grid grid-rows-[auto_auto] gap-2">
-                {/* Row 1 — title */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <Settings className="w-5 h-5 text-primary shrink-0" />
-                  <h2 className="text-lg font-semibold truncate">Transform Instructions</h2>
-                </div>
-
                 {/* Row 2 — actions toolbar */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
@@ -772,6 +726,43 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     </Button>
                   )}
                 </div>
+                {!initialFormatter && <Button variant="outline" size="sm" onClick={handleReset} className="cursor-pointer">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset All
+                </Button>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showMainInterface && (
+        <section className="flex-1 min-h-0">
+          {/* Unified headers */}
+          <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+            {/* H1 */}
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-2">
+                {sampleResponseValid === null ? (
+                  <div className="w-5 h-5 bg-muted" />
+                ) : sampleResponseValid ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-500" />
+                )}
+                <h2 className="text-lg font-semibold">{INPUT_SAMPLE_NAME}</h2>
+              </div>
+            </div>
+
+            {/* H2 */}
+            {/* H2: Transform Instructions (title row + actions row) */}
+            <div className="px-6 py-5 min-h-[72px]">
+              <div className="grid grid-rows-[auto_auto] gap-2">
+                {/* Row 1 — title */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <Settings className="w-5 h-5 text-primary shrink-0" />
+                  <h2 className="text-lg font-semibold truncate">Transform Instructions</h2>
+                </div>
               </div>
             </div>
 
@@ -790,46 +781,22 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     )}
                     <h2 className="text-lg font-semibold">{OUTPUT_SAMPLE_NAME}</h2>
                   </div>
-                  {mappedOutput && (
+                  {/* {mappedOutput && (
                     <Button variant="outline" size="sm" onClick={() => copyToClipboard(mappedOutput)} className="cursor-pointer">
                       <Copy className="w-4 h-4 mr-2" />
                       Copy
                     </Button>
-                  )}
-                </div>
-                <div className="flex flex-wrap">
+                  )} */}
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="cursor-pointer"
-                    title="View Schema Artifact"
-                    onClick={() => openArtifact(artifactIds?.schema, "schema.json")}
-                    disabled={!artifactIds?.schema}
-                  >
-                    <FileJson className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
                     className="cursor-pointer"
                     title="View Mapper Code"
                     onClick={() => openArtifact(artifactIds?.mapper_code, "mapper_code.ts")}
                     disabled={!artifactIds?.mapper_code}
                   >
-                    <FileCode2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="cursor-pointer"
-                    title="View Mongoose Model"
-                    onClick={() => openArtifact(artifactIds?.mongoose_model, "mongoose_model.ts")}
-                    disabled={!artifactIds?.mongoose_model}
-                  >
-                    <FileType className="w-4 h-4" />
+                    View <Eye className="w-4 h-4" />
                   </Button>
                 </div>
-
               </div>
             </div>
           </div>
