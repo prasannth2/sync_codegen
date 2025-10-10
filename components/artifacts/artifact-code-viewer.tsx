@@ -209,15 +209,15 @@ export function ArtifactCodeViewer({
               className="absolute top-0 right-0 z-10 flex flex-wrap gap-1"
               style={{ cursor: readOnly ? "default" : "text" }}
             >
-              <Button variant="outline" size="icon" onClick={() => setWrap((w) => !w)} title="Toggle wrap">
+              <Button className="cursor-pointer" variant="outline" size="icon" onClick={() => setWrap((w) => !w)} title="Toggle wrap">
                 {wrap ? <WrapText className="w-4 h-4" /> : <WrapText className="w-4 h-4" />}
               </Button>
 
-              <Button variant="outline" size="icon" onClick={handleCopy} title="Copy">
+              <Button className="cursor-pointer" variant="outline" size="icon" onClick={handleCopy} title="Copy">
                 <Copy className="w-4 h-4" />
               </Button>
 
-              <Button variant="outline" size="icon" onClick={handleDownload} title="Download">
+              <Button className="cursor-pointer" variant="outline" size="icon" onClick={handleDownload} title="Download">
                 <Download className="w-4 h-4" />
               </Button>
             </div>

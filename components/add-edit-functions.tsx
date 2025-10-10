@@ -48,6 +48,7 @@ import { Mention } from "@/lib/types/editor"
 import { TestFunctionPro } from "./models/test-function"
 import { LogLine } from "./terminal-log"
 import { CodeRunnerDialog } from "./code-runner/code-runner-dialog"
+import { AutoGrowTextarea } from "./auto-grow-textarea"
 
 interface GeneratedFunction {
   code: string
@@ -806,83 +807,42 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
           <div className="grid grid-cols-3 divide-x divide-border min-h-0 h-full">
             {/* Col 1 */}
             <div className="min-h-0 flex flex-col">
-              <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
-                <div className="space-y-2">
-                  <Label htmlFor="sample-response" className="text-base font-semibold">
-                    JSON Response *
-                  </Label>
-                  <Textarea
-                    id="sample-response"
-                    placeholder={
-                      selectedAPIData ? "Sample response loaded from API" : "Select an API first or paste JSON response"
-                    }
-                    value={sampleResponse}
-                    onChange={(e) => setSampleResponse(e.target.value)}
-                    onBlur={handleSampleResponseBlur}
-                    spellCheck={false}
-                    className={`font-mono text-sm resize-none overflow-auto w-full
-                      min-h-[300px] max-h-[calc(100vh-320px)]
-                      ${sampleResponseValid === false
-                        ? "border-red-500 focus:border-red-500"
-                        : sampleResponseValid === true
-                          ? "border-green-500"
-                          : ""}`}
-                  />
-                  <div className="flex items-center justify-between text-sm">
-                    <p className="text-muted-foreground">
-                      {selectedAPIData ? `Sample from ${selectedAPIData.name}` : "Paste your API response to analyze structure"}
-                    </p>
-                    {sampleResponseValid === false && <span className="text-red-500 font-medium">Invalid JSON</span>}
-                    {sampleResponseValid === true && <span className="text-green-500 font-medium">Valid JSON</span>}
+              {/* Make inner container full-height and flex so the textarea can grow */}
+              <div className="p-6">
+                <div className="h-full">
+                  <div className="space-y-2 h-full flex flex-col">
+                    <Label htmlFor="sample-response" className="text-base font-semibold">
+                      JSON Response *
+                    </Label>
+
+                    <AutoGrowTextarea
+                      id="sample-response"
+                      placeholder={selectedAPIData ? "Sample response loaded from API" : "Select an API first or paste JSON response"}
+                      value={sampleResponse}
+                      onChange={(e) => setSampleResponse(e.target.value)}
+                      onBlur={handleSampleResponseBlur}
+                      spellCheck={false}
+                      minRows={16}
+                      className={`font-mono text-sm
+    ${sampleResponseValid === false ? "border-red-500 focus:border-red-500"
+                          : sampleResponseValid === true ? "border-green-500" : ""}`}
+                    />
+
+                    <div className="flex items-center justify-between text-sm">
+                      <p className="text-muted-foreground">
+                        {selectedAPIData
+                          ? `Sample from ${selectedAPIData.name}`
+                          : "Paste your API response to analyze structure"}
+                      </p>
+                      {sampleResponseValid === false && (
+                        <span className="text-red-500 font-medium">Invalid JSON</span>
+                      )}
+                      {sampleResponseValid === true && (
+                        <span className="text-green-500 font-medium">Valid JSON</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* Preferences */}
-                <Collapsible open={showPreferences} onOpenChange={setShowPreferences}>
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="p-0 h-auto font-normal text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <ChevronDown className={`w-4 h-4 mr-2 transition-transform ${showPreferences ? "rotate-180" : ""}`} />
-                      Schema Preferences
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-4 mt-4 p-4 bg-muted/30 rounded">
-                    <div className="space-y-2">
-                      <Label htmlFor="naming-style">Naming Style</Label>
-                      <Select value={namingStyle} onValueChange={setNamingStyle}>
-                        <SelectTrigger id="naming-style">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="snake_case" className="cursor-pointer">snake_case</SelectItem>
-                          <SelectItem value="camelCase" className="cursor-pointer">camelCase</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="required-fields">Required Fields (comma-separated)</Label>
-                      <Input
-                        id="required-fields"
-                        placeholder="field1, field2, field3"
-                        value={requiredFields}
-                        onChange={(e) => setRequiredFields(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="disallow-additional"
-                        checked={disallowAdditional}
-                        onCheckedChange={(checked) => setDisallowAdditional(!!checked)}
-                        className="cursor-pointer"
-                      />
-                      <Label htmlFor="disallow-additional" className="text-sm">Disallow additional properties</Label>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
               </div>
             </div>
 
@@ -928,7 +888,7 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
 
             {/* Col 3 */}
             <div className="min-h-0 flex flex-col">
-              <div className="p-6 flex-1 min-h-0 overflow-y-auto">
+              <div className="p-6">
                 {isSchemaGenerateLoading ? (
                   <div className="flex items-center justify-center h-full text-center">
                     <div className="space-y-4">
@@ -950,22 +910,18 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                         readOnly
                         className="font-mono text-sm resize-none overflow-auto w-full flex-1 min-h-0"
                       /> */}
-                      <Textarea
-                        id="sample-response"
-                        placeholder={
-                          "Sample output"
-                        }
+                      <AutoGrowTextarea
+                        id="mapped-output"
+                        placeholder="Sample output"
                         value={mappedOutput}
                         onChange={(e) => setMappedOutput(e.target.value)}
                         onBlur={handleSampleOutputBlur}
                         spellCheck={false}
-                        className={`font-mono text-sm resize-none overflow-auto w-full
-                      min-h-[300px] max-h-[calc(100vh-320px)]
-                      ${mappedOutputValid === false
-                            ? "border-red-500 focus:border-red-500"
-                            : mappedOutputValid === true
-                              ? "border-green-500"
-                              : ""}`}
+                        minRows={16}
+                        className={`
+    font-mono text-sm
+    ${mappedOutputValid === false ? "border-red-500 focus:border-red-500"
+                            : mappedOutputValid === true ? "border-green-500" : ""}`}
                       />
                       <div className="flex items-center justify-between text-sm">
                         <p className="text-muted-foreground">Transformation preview</p>

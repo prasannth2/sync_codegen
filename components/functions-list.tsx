@@ -226,17 +226,6 @@ export function FunctionsList() {
                 key={item.formatter_id ?? item.api_id}
                 className="relative overflow-visible p-2"
               >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2
-               !h-6 !w-6 !p-0 rounded-full z-10 cursor-pointer"
-                  onClick={() => router.push(`/functions/${item.formatter_id}`)}
-                  title="Edit"
-                >
-                  <Pencil className="h-3 w-3 -rotate-90" strokeWidth={1.75} />
-                </Button>
-
                 <div className="flex">
                   <div className="flex-1 p-2">
                     <div className="flex items-start justify-between gap-3">
@@ -257,25 +246,21 @@ export function FunctionsList() {
                         {item.description ?? "No description provided."}
                       </p>
 
-                      <div className="mt-3 flex items-center gap-2">
-                        <Clock7 className="h-4 w-4 text-muted-foreground" />
-                        {statusBadge(item.schedule_status)}
-                      </div>
+                      <div className="flex justify-between items-center mt-3">
+                        <div className="flex items-center gap-2">
+                          <Clock7 className="h-4 w-4 text-muted-foreground" />
+                          {statusBadge(item.schedule_status)}
+                        </div>
 
-                      {/* <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <User2 className="h-4 w-4" />
-                          {item.owner ?? "owner"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {item.users_count ?? 1}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Star className="h-4 w-4" />
-                          {item.stars ?? 0}
-                        </span>
-                      </div> */}
+                        <Button
+                          variant="ghost"
+                          className="rounded-full cursor-pointer bg-foreground/5 hover:bg-foreground/10"
+                          onClick={() => router.push(`/functions/${item.formatter_id}`)}
+                          title="Edit"
+                        >
+                          Edit <Pencil className="h-2 w-2" size="16" strokeWidth={1.75} />
+                        </Button>
+                      </div>
                     </CardContent>
                   </div>
 

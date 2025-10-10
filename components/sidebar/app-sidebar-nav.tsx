@@ -16,9 +16,6 @@ import { ClientActiveButton } from "./client-active-button"; // tiny client leaf
 export function AppSidebarNav() {
     return (
         <>
-            <SidebarHeader className="px-3 py-2">
-                {/* You can put a static logo here; no hooks */}
-            </SidebarHeader>
 
             <SidebarContent className="overflow-x-hidden">
                 <SidebarGroup>

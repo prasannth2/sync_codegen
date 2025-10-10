@@ -92,7 +92,7 @@ export function TestFunctionPro({
       <DialogContent
         className={clsx(
           "w-full", dialogMaxWidthClass,
-          "h-[88vh] p-0 overflow-hidden",
+          "h-[88vh] p-0 overflow-y-auto",
           "flex flex-col"
         )}
       >
