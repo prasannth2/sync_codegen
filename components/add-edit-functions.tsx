@@ -450,9 +450,10 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
       })
       return
     }
-    setTestInput(sampleResponse)
-    setTestOutput("")
-    setShowTestPopup(true)
+    setTestInput(sampleResponse);
+    setTestOutput("");
+    clearLogs();
+    setShowTestPopup(true);
   }
 
   const clearLogs = () => setLogs([]);

@@ -11,6 +11,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { FlaskConical, Loader2 } from "lucide-react";
 import { TerminalLog, type LogLine } from "@/components/terminal-log";
 import clsx from "clsx";
+import { AutoGrowTextarea } from "../auto-grow-textarea";
 
 type TestFunctionProProps = {
   open: boolean;
@@ -92,7 +93,7 @@ export function TestFunctionPro({
       <DialogContent
         className={clsx(
           "w-full", dialogMaxWidthClass,
-          "h-[88vh] p-0 overflow-y-auto",
+          "h-[88vh] p-0 overflow-auto",
           "flex flex-col"
         )}
       >
@@ -147,14 +148,24 @@ export function TestFunctionPro({
             <ResizableHandle withHandle />
 
             <ResizablePanel defaultSize={sizes[1]} minSize={18}>
-              <section className="h-full flex flex-col p-3">
+              <section className="h-full flex flex-col p-3 overflow-y-auto">
                 <Label className="mb-2 text-sm font-medium">Generated Output</Label>
                 <Textarea
                   value={testOutput}
                   readOnly
-                  className="font-mono text-xs md:text-sm resize-none h-full bg-muted"
+                  className="font-mono text-xs md:text-sm resize-none h-full bg-muted overflow-y-auto"
                   placeholder="Output will appear here after test execution..."
                 />
+
+                {/* <AutoGrowTextarea
+                  id="sample-response"
+                  placeholder="Output will appear here after test execution..."
+                  value={testOutput}
+                  onBlur={undefined}
+                  spellCheck={false}
+                  minRows={16}
+                  className={`font-mono text-sm`}
+                /> */}
               </section>
             </ResizablePanel>
             <ResizableHandle withHandle />
