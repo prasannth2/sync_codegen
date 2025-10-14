@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { WorkflowRun } from "./types";
 import { durationFrom, fmtMs, fmtTimeParts, fmtUSD, statusTone, triggerTone } from "./format";
+import { Button } from "../ui/button";
+import { Eye, View } from "lucide-react";
 
 export function LogsTable({
   items,
@@ -24,9 +26,9 @@ export function LogsTable({
             <TableHead className="w-[180px]">Time</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead>Workflow</TableHead>
-            <TableHead className="w-[120px]">Cost</TableHead>
-            <TableHead className="w-[140px]">Trigger</TableHead>
+            {/* <TableHead className="w-[120px]">Cost</TableHead> */}
             <TableHead className="w-[120px]">Duration</TableHead>
+            <TableHead className="w-[10px]">View</TableHead> 
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -50,14 +52,14 @@ export function LogsTable({
                     {st.text}
                   </Badge>
                 </TableCell>
-                <TableCell className="truncate">{(it as any).workflow_id || "—"}</TableCell>
-                <TableCell>{fmtUSD(it.cost_usd ?? 0.001)}</TableCell>
-                <TableCell>
+                <TableCell className="truncate">{(it as any).workflow_name || "—"}</TableCell>
+                {/* <TableCell>
                   <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs ${tr.className}`}>
                     {tr.text}
                   </span>
-                </TableCell>
+                </TableCell> */}
                 <TableCell>{fmtMs(dur)}</TableCell>
+                <TableCell><Button size="icon" variant="ghost"><Eye/></Button></TableCell>
               </TableRow>
             );
           })}

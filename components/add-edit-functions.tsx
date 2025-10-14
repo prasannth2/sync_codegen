@@ -869,21 +869,6 @@ export function AddEditFunctions({ initialFormatter }: EditFunctionsProps) {
                     Describe transformations step-by-step. Use @ to reference functions and variables.
                   </p>
                 </div>
-
-                {generatedFunction && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Code className="w-5 h-5 text-blue-500" />
-                        <span className="font-medium text-blue-700 dark:text-blue-300">Function Ready</span>
-                      </div>
-                      <Button onClick={handleTestFunction} disabled={!sampleResponse} size="sm" variant="outline" className="cursor-pointer">
-                        <FlaskConical className="w-4 h-4 mr-2" />
-                        Test Function
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

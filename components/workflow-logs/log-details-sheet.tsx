@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowRun } from "./types";
 import { durationFrom, fmtMs, fmtTimeParts, statusTone } from "./format";
-import { Eye, Copy } from "lucide-react";
+import { Eye, Copy, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useCopy } from "@/hooks/use-copy";
+import { TerminalLog } from "../terminal-log";
 
 export function LogDetailsSheet({
   open,
@@ -50,7 +51,22 @@ export function LogDetailsSheet({
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="px-5 pt-5 pb-3">
             <SheetHeader className="items-start">
-              <SheetTitle>Log Details</SheetTitle>
+              <SheetTitle>
+                <div className="w-full flex justify-between items-center gap-3">
+                  <span>Log Details</span>
+                  
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0 ml-auto"
+                    onClick={() => onOpenChange(false)}
+                    aria-label="Close"
+                    title="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </SheetTitle>
               <SheetDescription className="sr-only">Workflow execution details</SheetDescription>
             </SheetHeader>
           </div>
@@ -100,77 +116,14 @@ export function LogDetailsSheet({
             </KeyVal>
           </section>
 
-          {/* Snapshot row */}
-          <section className="rounded-lg border overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                <span className="text-sm font-medium">View Snapshot</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs"
-                onClick={() => copyJSON("Workflow snapshot", run.context_snapshot)}
-              >
-                {copied ? "Copied" : "Copy JSON"}
-              </Button>
-            </div>
-          </section>
-
           {/* Execution details */}
           <section className="rounded-lg border">
-            <div className="px-4 py-3 text-sm font-medium">Workflow Execution</div>
-            <Separator />
             <div className="p-4 space-y-3">
-              {(run.nodes ?? []).map((n) => {
-                const nodeDur =
-                  n.started_at && n.ended_at
-                    ? new Date(n.ended_at).getTime() - new Date(n.started_at).getTime()
-                    : undefined;
-
-                return (
-                  <div key={n.node_id} className="rounded-md border p-3">
-                    {/* Node header row */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold leading-6">
-                          <span className="font-mono">{n.type}</span>{" "}
-                          <span className="text-muted-foreground font-normal">({n.node_id})</span>
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">
-                        {fmtMs(nodeDur)}
-                      </div>
-                    </div>
-
-                    {/* Error / Info message */}
-                    {n.error_message ? (
-                      <div className="mt-2 rounded-md bg-destructive/10 text-destructive px-3 py-2 text-xs leading-5">
-                        {n.error_message}
-                      </div>
-                    ) : null}
-
-                    {/* Actions */}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => copyJSON("Node input", n.input_preview)}>
-                        Copy Input
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => copyJSON("Node output", n.output_preview)}>
-                        Copy Output
-                      </Button>
-                      {n.error_stack ? (
-                        <Button size="sm" variant="outline" onClick={() => copyText("Error stack", n.error_stack!)}>
-                          Copy Stack
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-              {(run.nodes ?? []).length === 0 && (
-                <div className="text-sm text-muted-foreground">No per-node details.</div>
-              )}
+              <TerminalLog logs={[{
+                ts: run.createdAt,
+                level: "warn",
+                args: run.error_stack ? [run.error_stack] : ["No logs available."]
+              }]} height="100%" />
             </div>
           </section>
         </div>
@@ -194,9 +147,17 @@ function KeyVal({
   align?: "left" | "right";
 }) {
   return (
-    <div className="grid grid-cols-[120px,1fr] items-start gap-3">
-      <div className="text-muted-foreground">{label}</div>
-      <div className={align === "right" ? "text-right" : ""}>{children}</div>
+    <div className="flex justify-between items-start gap-4">
+      <div className="text-muted-foreground min-w-[120px]">{label}</div>
+      <div
+        className={
+          align === "right"
+            ? "flex-1 text-right font-medium break-words"
+            : "flex-1 font-medium break-words"
+        }
+      >
+        {children}
+      </div>
     </div>
   );
 }
